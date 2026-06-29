@@ -1,0 +1,25 @@
+# 依赖
+node_modules/
+
+# 构建产物
+dist/
+build/
+src-tauri/target/
+
+# 环境与密钥
+.env
+.env.local
+*.local
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 编辑器
+.vscode/
+.idea/
+
+# 本地上下文/笔记（不入库）
+PROJECT_CONTEXT.md
+CHAT_LOG.md
+fix_bug/
