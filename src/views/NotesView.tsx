@@ -426,14 +426,14 @@ function Editor({
 
       {/* Markdown 快捷工具栏（格式按钮居中；单页态右侧放预览/编辑切换） */}
       {(viewMode === "split" || viewMode === "single") && (
-        <div className="flex shrink-0 items-center gap-2 border-b border-mint-100 px-4 py-1.5">
-          {/* 左侧撑开，保证中间格式按钮真正居中 */}
-          <div className="flex-1" />
+        <div className="flex shrink-0 items-center border-b border-mint-100 px-4 py-1.5">
+          {/* 左侧固定槽位，与右侧等宽，保证中间格式按钮中线恒定不抖 */}
+          <div className="w-9 shrink-0" />
 
-          {/* 格式按钮仅在书写区可见时显示 */}
-          {(viewMode === "split" || singlePane === "write") && (
-            <div className="flex items-center gap-0.5 overflow-x-auto">
-              {tools.map((t, i) =>
+          {/* 中间：格式按钮，真居中且可横向滚动；仅书写区可见时显示 */}
+          <div className="flex min-w-0 flex-1 items-center justify-center gap-0.5 overflow-x-auto">
+            {(viewMode === "split" || singlePane === "write") &&
+              tools.map((t, i) =>
                 t === "divider" ? (
                   <span key={i} className="mx-1 h-4 w-px shrink-0 bg-mint-100" />
                 ) : (
@@ -447,11 +447,10 @@ function Editor({
                   </button>
                 ),
               )}
-            </div>
-          )}
+          </div>
 
-          {/* 右侧：单页态放预览/编辑切换（仅图标） */}
-          <div className="flex flex-1 justify-end">
+          {/* 右侧固定槽位：单页态放预览/编辑切换（仅图标） */}
+          <div className="flex w-9 shrink-0 justify-end">
             {viewMode === "single" && (
               <button
                 onClick={() =>
