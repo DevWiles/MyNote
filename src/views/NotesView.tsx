@@ -175,9 +175,6 @@ export default function NotesView() {
   );
 }
 
-type ViewMode = "split" | "single";
-type SinglePane = "write" | "preview";
-
 interface Heading {
   level: number;
   text: string;
@@ -229,9 +226,10 @@ function Editor({
   onChange: (patch: { title?: string; body?: string }) => void;
   onDelete: () => void;
 }) {
-  const [viewMode, setViewMode] = useState<ViewMode>("split");
-  const [singlePane, setSinglePane] = useState<SinglePane>("write");
-  const [showOutline, setShowOutline] = useState(true);
+  const { noteView, setNoteView } = useStore();
+  const viewMode = noteView.mode;
+  const singlePane = noteView.pane;
+  const showOutline = noteView.outline;
   const titleRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
@@ -392,7 +390,7 @@ function Editor({
       <div className="relative flex shrink-0 items-center justify-center gap-2 border-b border-mint-100 px-6 py-2">
         <div className="flex items-center gap-0.5 rounded-xl bg-mint-50 p-0.5">
           <button
-            onClick={() => setViewMode("split")}
+            onClick={() => setNoteView({ mode: "split" })}
             className={seg(viewMode === "split")}
             title="双页：边写边预览"
           >
@@ -400,7 +398,7 @@ function Editor({
             双页
           </button>
           <button
-            onClick={() => setViewMode("single")}
+            onClick={() => setNoteView({ mode: "single" })}
             className={seg(viewMode === "single")}
             title="单页"
           >
@@ -411,7 +409,7 @@ function Editor({
 
         {/* 大纲（标题列表）开关，靠右 */}
         <button
-          onClick={() => setShowOutline((v) => !v)}
+          onClick={() => setNoteView({ outline: !showOutline })}
           className={[
             "absolute right-4 flex items-center justify-center rounded-lg p-1.5 transition-colors",
             showOutline
@@ -454,7 +452,9 @@ function Editor({
             {viewMode === "single" && (
               <button
                 onClick={() =>
-                  setSinglePane((p) => (p === "write" ? "preview" : "write"))
+                  setNoteView({
+                    pane: singlePane === "write" ? "preview" : "write",
+                  })
                 }
                 className="flex items-center justify-center rounded-lg border border-mint-100 p-1.5 text-ink-soft transition-colors hover:border-mint-300 hover:text-ink"
                 title={singlePane === "write" ? "预览" : "编辑"}

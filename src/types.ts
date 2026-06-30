@@ -67,6 +67,18 @@ export interface Report {
 
 export type ThemeMode = "light" | "dark";
 
+/** 笔记编辑器视图偏好（持久化，重启后沿用上次状态） */
+export type NoteViewMode = "split" | "single";
+export type NoteEditPane = "write" | "preview";
+export interface NoteViewPrefs {
+  /** 单页 / 双页 */
+  mode: NoteViewMode;
+  /** 单页时：书写 / 预览 */
+  pane: NoteEditPane;
+  /** 是否显示大纲 */
+  outline: boolean;
+}
+
 export interface Settings {
   deepseekApiKey: string;
   deepseekModel: string;

@@ -10,6 +10,7 @@ import type {
   Priority,
   Subtask,
   PlanLevel,
+  NoteViewPrefs,
 } from "../types";
 
 const now = () => new Date().toISOString();
@@ -25,6 +26,7 @@ export interface AppState {
   events: ScheduleEvent[];
   reports: Report[];
   settings: Settings;
+  noteView: NoteViewPrefs;
 
   // 待办
   addTask: (input: {
@@ -70,6 +72,9 @@ export interface AppState {
 
   // 设置
   updateSettings: (patch: Partial<Settings>) => void;
+
+  // 笔记视图偏好
+  setNoteView: (patch: Partial<NoteViewPrefs>) => void;
 }
 
 export const useStore = create<AppState>()(
@@ -85,6 +90,7 @@ export const useStore = create<AppState>()(
         reportTemplate: DEFAULT_TEMPLATE,
         theme: "light",
       },
+      noteView: { mode: "split", pane: "write", outline: true },
 
       addTask: (input) =>
         set((s) => ({
@@ -346,6 +352,9 @@ export const useStore = create<AppState>()(
 
       updateSettings: (patch) =>
         set((s) => ({ settings: { ...s.settings, ...patch } })),
+
+      setNoteView: (patch) =>
+        set((s) => ({ noteView: { ...s.noteView, ...patch } })),
     }),
     {
       name: "mynote-data",
@@ -370,6 +379,7 @@ export const useStore = create<AppState>()(
         events: s.events,
         reports: s.reports,
         settings: s.settings,
+        noteView: s.noteView,
       }),
     },
   ),
