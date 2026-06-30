@@ -71,8 +71,8 @@ export default function NotesView() {
         ].join(" ")}
       >
         {listCollapsed ? (
-          /* 折叠态：仅图标——展开按钮 + 新建 */
-          <div className="flex flex-col items-center gap-2 py-4">
+          /* 折叠态：仅图标——展开按钮 + 新建（靠左，与展开态左对齐，收起不抖） */
+          <div className="flex flex-col items-start gap-2 px-3 py-4">
             <button
               onClick={() => setListCollapsed(false)}
               title="展开笔记列表"
@@ -102,11 +102,11 @@ export default function NotesView() {
               </button>
             </div>
 
-            {/* 新建笔记（标题下方、列表上方） */}
+            {/* 新建笔记（标题下方、列表上方），内容左对齐——与折叠态图标对齐，收起不抖 */}
             <div className="px-3 pt-2">
               <button
                 onClick={createNote}
-                className="flex w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-mint-400 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-mint-500"
+                className="flex w-full items-center justify-start gap-2 whitespace-nowrap rounded-xl bg-mint-400 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-mint-500"
               >
                 <Plus size={16} />
                 新建笔记
