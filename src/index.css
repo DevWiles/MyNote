@@ -58,9 +58,19 @@ body {
   background-color: transparent;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  /* 桌面应用：禁止文本选中拖拽与橡皮筋滚动 */
+  /* 桌面应用：禁止文本选中拖拽与橡皮筋滚动（WKWebView 需 -webkit- 前缀） */
+  -webkit-user-select: none;
   user-select: none;
   overflow: hidden;
+}
+
+/* 仅在输入/可编辑/正文预览区域允许选中文本 */
+input,
+textarea,
+[contenteditable="true"],
+.md-body {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 /* Markdown 预览排版 */
