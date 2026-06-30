@@ -14,6 +14,7 @@ import {
   ListTree,
   Minus,
   NotebookPen,
+  PanelLeft,
   Pencil,
   Plus,
   Search,
@@ -38,6 +39,8 @@ export default function NotesView() {
   );
   /** 刚新建的笔记 id，用于让标题输入框自动获焦 */
   const [createdId, setCreatedId] = useState<string | null>(null);
+  /** 折叠笔记列表（逻辑同侧边栏折叠） */
+  const [listCollapsed, setListCollapsed] = useState(false);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -60,57 +63,94 @@ export default function NotesView() {
 
   return (
     <div className="flex h-full">
-      {/* 笔记列表 */}
-      <div className="flex w-64 shrink-0 flex-col border-r border-mint-100">
-        <div className="flex items-center gap-2 px-4 py-4">
-          <div className="flex flex-1 items-center gap-2 rounded-xl border border-mint-100 bg-surface px-2.5 py-1.5 focus-within:border-mint-300">
-            <Search size={15} className="text-ink-soft" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="搜索笔记"
-              className="w-full bg-transparent text-sm outline-none placeholder:text-ink-soft/50"
-            />
+      {/* 笔记列表（可折叠，逻辑同侧边栏：即时切换宽度、overflow-hidden 防抖） */}
+      <div
+        className={[
+          "flex shrink-0 flex-col overflow-hidden border-r border-mint-100",
+          listCollapsed ? "w-[60px]" : "w-64",
+        ].join(" ")}
+      >
+        {listCollapsed ? (
+          /* 折叠态：仅图标——展开按钮 + 新建 */
+          <div className="flex flex-col items-center gap-2 py-4">
+            <button
+              onClick={() => setListCollapsed(false)}
+              title="展开笔记列表"
+              className="flex h-9 w-9 items-center justify-center rounded-xl text-ink-soft transition-colors hover:bg-mint-50 hover:text-ink"
+            >
+              <PanelLeft size={18} />
+            </button>
+            <button
+              onClick={createNote}
+              title="新建笔记"
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-mint-400 text-white transition-colors hover:bg-mint-500"
+            >
+              <Plus size={18} />
+            </button>
           </div>
-          <button
-            onClick={createNote}
-            title="新建笔记"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-mint-400 text-white transition-colors hover:bg-mint-500"
-          >
-            <Plus size={18} />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-2 pb-3">
-          {filtered.length === 0 ? (
-            <p className="px-3 py-8 text-center text-sm text-ink-soft">
-              {notes.length === 0 ? "还没有笔记" : "没有匹配的笔记"}
-            </p>
-          ) : (
-            filtered.map((n) => (
+        ) : (
+          <>
+            {/* 第一行：新建笔记入口 + 折叠按钮 */}
+            <div className="flex items-center gap-2 px-3 pt-4">
               <button
-                key={n.id}
-                onClick={() => setSelectedId(n.id)}
-                className={[
-                  "mb-1 w-full rounded-xl px-3 py-2.5 text-left transition-colors",
-                  n.id === selectedId
-                    ? "bg-mint-50"
-                    : "hover:bg-mint-50/50",
-                ].join(" ")}
+                onClick={createNote}
+                className="flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-mint-400 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-mint-500"
               >
-                <p className="truncate text-sm font-medium text-ink">
-                  {n.title || "未命名笔记"}
-                </p>
-                <p className="mt-0.5 truncate text-xs text-ink-soft">
-                  {n.body.replace(/[#*`\->]/g, "").trim() || "空笔记"}
-                </p>
-                <p className="mt-1 text-[11px] text-ink-soft/60">
-                  {fmtDate(n.updatedAt)}
-                </p>
+                <Plus size={16} />
+                新建笔记
               </button>
-            ))
-          )}
-        </div>
+              <button
+                onClick={() => setListCollapsed(true)}
+                title="折叠笔记列表"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-ink-soft transition-colors hover:bg-mint-50 hover:text-ink"
+              >
+                <PanelLeft size={18} />
+              </button>
+            </div>
+
+            {/* 第二行：搜索 */}
+            <div className="px-3 pb-2 pt-3">
+              <div className="flex items-center gap-2 rounded-xl border border-mint-100 bg-surface px-2.5 py-1.5 focus-within:border-mint-300">
+                <Search size={15} className="text-ink-soft" />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="搜索笔记"
+                  className="w-full bg-transparent text-sm outline-none placeholder:text-ink-soft/50"
+                />
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-2 pb-3">
+              {filtered.length === 0 ? (
+                <p className="px-3 py-8 text-center text-sm text-ink-soft">
+                  {notes.length === 0 ? "还没有笔记" : "没有匹配的笔记"}
+                </p>
+              ) : (
+                filtered.map((n) => (
+                  <button
+                    key={n.id}
+                    onClick={() => setSelectedId(n.id)}
+                    className={[
+                      "mb-1 w-full rounded-xl px-3 py-2.5 text-left transition-colors",
+                      n.id === selectedId ? "bg-mint-50" : "hover:bg-mint-50/50",
+                    ].join(" ")}
+                  >
+                    <p className="truncate text-sm font-medium text-ink">
+                      {n.title || "未命名笔记"}
+                    </p>
+                    <p className="mt-0.5 truncate text-xs text-ink-soft">
+                      {n.body.replace(/[#*`\->]/g, "").trim() || "空笔记"}
+                    </p>
+                    <p className="mt-1 text-[11px] text-ink-soft/60">
+                      {fmtDate(n.updatedAt)}
+                    </p>
+                  </button>
+                ))
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       {/* 编辑器 */}
