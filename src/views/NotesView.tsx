@@ -426,7 +426,7 @@ function Editor({
 
       {/* Markdown 快捷工具栏（格式按钮居中；单页态右侧放预览/编辑切换） */}
       {(viewMode === "split" || viewMode === "single") && (
-        <div className="flex shrink-0 items-center border-b border-mint-100 px-4 py-1.5">
+        <div className="flex h-11 shrink-0 items-center border-b border-mint-100 px-4">
           {/* 左侧固定槽位，与右侧等宽，保证中间格式按钮中线恒定不抖 */}
           <div className="w-9 shrink-0" />
 
