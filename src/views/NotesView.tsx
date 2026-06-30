@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bold,
+  BookSearch,
   Code,
   Columns2,
-  Eye,
   Heading2,
   Image as ImageIcon,
   Italic,
@@ -369,28 +369,6 @@ function Editor({
           </button>
         </div>
 
-        {viewMode === "single" && (
-          <button
-            onClick={() =>
-              setSinglePane((p) => (p === "write" ? "preview" : "write"))
-            }
-            className="flex items-center gap-1.5 rounded-lg border border-mint-100 px-2.5 py-1 text-xs text-ink-soft transition-colors hover:border-mint-300 hover:text-ink"
-            title={singlePane === "write" ? "预览编译结果" : "返回编辑"}
-          >
-            {singlePane === "write" ? (
-              <>
-                <Eye size={14} />
-                预览
-              </>
-            ) : (
-              <>
-                <Pencil size={14} />
-                编辑
-              </>
-            )}
-          </button>
-        )}
-
         {/* 大纲（标题列表）开关，靠右 */}
         <button
           onClick={() => setShowOutline((v) => !v)}
@@ -406,22 +384,50 @@ function Editor({
         </button>
       </div>
 
-      {/* Markdown 快捷工具栏（居中，仅书写区可见时显示） */}
-      {(viewMode === "split" || singlePane === "write") && (
-        <div className="flex items-center justify-center gap-0.5 overflow-x-auto border-b border-mint-100 px-4 py-1.5">
-          {tools.map((t, i) =>
-            t === "divider" ? (
-              <span key={i} className="mx-1 h-4 w-px shrink-0 bg-mint-100" />
-            ) : (
-              <button
-                key={i}
-                onClick={t.run}
-                title={t.title}
-                className="flex shrink-0 items-center justify-center rounded-lg p-1.5 text-ink-soft transition-colors hover:bg-mint-50 hover:text-ink"
-              >
-                <t.icon size={16} />
-              </button>
-            ),
+      {/* Markdown 快捷工具栏（格式按钮居中；单页态右侧放预览/编辑切换） */}
+      {(viewMode === "split" || viewMode === "single") && (
+        <div className="relative flex items-center justify-center gap-0.5 border-b border-mint-100 px-4 py-1.5">
+          {/* 格式按钮仅在书写区可见时显示 */}
+          {(viewMode === "split" || singlePane === "write") && (
+            <div className="flex items-center gap-0.5 overflow-x-auto">
+              {tools.map((t, i) =>
+                t === "divider" ? (
+                  <span key={i} className="mx-1 h-4 w-px shrink-0 bg-mint-100" />
+                ) : (
+                  <button
+                    key={i}
+                    onClick={t.run}
+                    title={t.title}
+                    className="flex shrink-0 items-center justify-center rounded-lg p-1.5 text-ink-soft transition-colors hover:bg-mint-50 hover:text-ink"
+                  >
+                    <t.icon size={16} />
+                  </button>
+                ),
+              )}
+            </div>
+          )}
+
+          {/* 单页态：预览 / 编辑 切换，靠右 */}
+          {viewMode === "single" && (
+            <button
+              onClick={() =>
+                setSinglePane((p) => (p === "write" ? "preview" : "write"))
+              }
+              className="absolute right-4 flex items-center gap-1.5 rounded-lg border border-mint-100 px-2.5 py-1 text-xs text-ink-soft transition-colors hover:border-mint-300 hover:text-ink"
+              title={singlePane === "write" ? "预览编译结果" : "返回编辑"}
+            >
+              {singlePane === "write" ? (
+                <>
+                  <BookSearch size={14} />
+                  预览
+                </>
+              ) : (
+                <>
+                  <Pencil size={14} />
+                  编辑
+                </>
+              )}
+            </button>
           )}
         </div>
       )}
