@@ -64,56 +64,63 @@ export async function savePaths(patch: Partial<AppPaths>): Promise<AppPaths> {
   return next;
 }
 
+/** 默认基目录：主文件夹下的 MyNote（mac: ~/MyNote；win: C:\Users\你\MyNote） */
+export async function resolveBase(): Promise<string> {
+  const { homeDir, join } = await import("@tauri-apps/api/path");
+  return join(await homeDir(), "MyNote");
+}
+
+/** 笔记 .md 实际目录（自定义 or 默认基目录） */
+export async function resolveNotesDir(): Promise<string> {
+  const { notesDir } = await getPaths();
+  return notesDir || resolveBase();
+}
+
+/** 数据实际目录（自定义 or 默认基目录） */
+export async function resolveDataDir(): Promise<string> {
+  const { dataDir } = await getPaths();
+  return dataDir || resolveBase();
+}
+
+/** mynote.json 完整路径 */
+export async function dataFilePath(): Promise<string> {
+  const { join } = await import("@tauri-apps/api/path");
+  return join(await resolveDataDir(), "mynote.json");
+}
+
 /** 默认目录（用于设置页展示真实落点） */
 export async function defaultDirs(): Promise<{
   dataDefault: string;
   notesDefault: string;
 }> {
-  if (!isTauri) return { dataDefault: "(浏览器 localStorage)", notesDefault: "(浏览器 localStorage)" };
+  if (!isTauri)
+    return {
+      dataDefault: "(浏览器 localStorage)",
+      notesDefault: "(浏览器 localStorage)",
+    };
   try {
-    const { appDataDir, join } = await import("@tauri-apps/api/path");
-    const base = await appDataDir();
-    return { dataDefault: base, notesDefault: await join(base, "notes") };
+    const base = await resolveBase();
+    return { dataDefault: base, notesDefault: base };
   } catch {
-    return { dataDefault: "应用数据目录", notesDefault: "应用数据目录/notes" };
+    return { dataDefault: "主文件夹/MyNote", notesDefault: "主文件夹/MyNote" };
   }
 }
 
 // ---------- 数据文件(mynote.json)迁移 ----------
 
-async function readDataFile(dir: string): Promise<string | null> {
-  const { readTextFile, exists, BaseDirectory } = await import(
-    "@tauri-apps/plugin-fs"
-  );
-  if (dir) {
-    const p = `${dir}/mynote.json`;
-    return (await exists(p)) ? readTextFile(p) : null;
-  }
-  return (await exists("mynote.json", { baseDir: BaseDirectory.AppData }))
-    ? readTextFile("mynote.json", { baseDir: BaseDirectory.AppData })
-    : null;
-}
-
-async function writeDataFile(dir: string, content: string): Promise<void> {
-  const { writeTextFile, mkdir, exists, BaseDirectory } = await import(
-    "@tauri-apps/plugin-fs"
-  );
-  if (dir) {
-    if (!(await exists(dir))) await mkdir(dir, { recursive: true });
-    await writeTextFile(`${dir}/mynote.json`, content);
-  } else {
-    await writeTextFile("mynote.json", content, {
-      baseDir: BaseDirectory.AppData,
-    });
-  }
-}
-
-/** 把数据文件从 fromDir 复制到 toDir（不删旧的） */
+/** 把 fromDir/mynote.json 复制到 toDir（绝对目录，不删旧的） */
 export async function migrateDataFile(
   fromDir: string,
   toDir: string,
 ): Promise<void> {
-  if (!isTauri || fromDir === toDir) return;
-  const content = await readDataFile(fromDir);
-  if (content != null) await writeDataFile(toDir, content);
+  if (!isTauri || !fromDir || !toDir || fromDir === toDir) return;
+  const { readTextFile, writeTextFile, mkdir, exists } = await import(
+    "@tauri-apps/plugin-fs"
+  );
+  const { join } = await import("@tauri-apps/api/path");
+  const src = await join(fromDir, "mynote.json");
+  if (!(await exists(src))) return;
+  const content = await readTextFile(src);
+  if (!(await exists(toDir))) await mkdir(toDir, { recursive: true });
+  await writeTextFile(await join(toDir, "mynote.json"), content);
 }

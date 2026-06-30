@@ -19,6 +19,8 @@ import {
   savePaths,
   defaultDirs,
   migrateDataFile,
+  resolveBase,
+  resolveDataDir,
 } from "../store/paths";
 import { saveNote } from "../store/notesFs";
 
@@ -70,10 +72,11 @@ export default function SettingsView() {
     await Promise.all(useStore.getState().notes.map(saveNote));
     markSaved();
   };
-  // 改数据目录：复制 mynote.json 到新位置，写入引导配置，提示重启生效
+  // 改数据目录：复制 mynote.json 到新位置（绝对路径），写入引导配置，提示重启生效
   const changeDataDir = async (dir: string) => {
-    const prev = (await getPaths()).dataDir;
-    await migrateDataFile(prev, dir);
+    const prevAbs = await resolveDataDir();
+    const nextAbs = dir || (await resolveBase());
+    await migrateDataFile(prevAbs, nextAbs);
     await savePaths({ dataDir: dir });
     setDataDir(dir);
     setNeedRestart(true);
