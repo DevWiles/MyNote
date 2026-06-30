@@ -1,4 +1,5 @@
 import type { Note } from "../types";
+import { getPaths } from "./paths";
 
 /**
  * 笔记以「磁盘 .md 文件」为存储后端。
@@ -74,16 +75,44 @@ function parse(content: string, fallbackId: string): Note {
 // ---------- Tauri fs 懒加载 ----------
 
 type FsMod = typeof import("@tauri-apps/plugin-fs");
+type BaseDir = import("@tauri-apps/plugin-fs").BaseDirectory;
+type Opts = { baseDir?: BaseDir } | undefined;
+
 let fsPromise: Promise<FsMod> | null = null;
 function fs() {
   if (!fsPromise) fsPromise = import("@tauri-apps/plugin-fs");
   return fsPromise;
 }
 
-async function ensureDir() {
-  const { exists, mkdir, BaseDirectory } = await fs();
-  if (!(await exists(NOTES_DIR, { baseDir: BaseDirectory.AppData }))) {
-    await mkdir(NOTES_DIR, { baseDir: BaseDirectory.AppData, recursive: true });
+/**
+ * 解析笔记目录：自定义 notesDir 用绝对路径（opts 为 undefined）；
+ * 否则用默认 AppData/notes（带 baseDir）。
+ */
+async function loc(): Promise<{
+  dir: string;
+  file: (name: string) => string;
+  opts: Opts;
+}> {
+  const { notesDir } = await getPaths();
+  if (notesDir) {
+    return {
+      dir: notesDir,
+      file: (name) => `${notesDir}/${name}`,
+      opts: undefined,
+    };
+  }
+  const { BaseDirectory } = await fs();
+  return {
+    dir: NOTES_DIR,
+    file: (name) => `${NOTES_DIR}/${name}`,
+    opts: { baseDir: BaseDirectory.AppData },
+  };
+}
+
+async function ensureDir(l: Awaited<ReturnType<typeof loc>>) {
+  const { exists, mkdir } = await fs();
+  if (!(await exists(l.dir, l.opts))) {
+    await mkdir(l.dir, { ...(l.opts ?? {}), recursive: true });
   }
 }
 
@@ -108,19 +137,16 @@ export async function loadNotes(): Promise<Note[]> {
   if (!isTauri) {
     notes = lsLoad();
   } else {
-    const { readDir, readTextFile, BaseDirectory } = await fs();
-    await ensureDir();
-    const entries = await readDir(NOTES_DIR, {
-      baseDir: BaseDirectory.AppData,
-    });
+    const { readDir, readTextFile } = await fs();
+    const l = await loc();
+    await ensureDir(l);
+    const entries = await readDir(l.dir, l.opts);
     const mdFiles = entries.filter(
       (e) => e.isFile && e.name.toLowerCase().endsWith(".md"),
     );
     notes = await Promise.all(
       mdFiles.map(async (e) => {
-        const content = await readTextFile(`${NOTES_DIR}/${e.name}`, {
-          baseDir: BaseDirectory.AppData,
-        });
+        const content = await readTextFile(l.file(e.name), l.opts);
         return parse(content, e.name.replace(/\.md$/i, ""));
       }),
     );
@@ -147,11 +173,10 @@ export function saveNote(note: Note): Promise<void> {
       lsSaveAll([note, ...all]);
       return;
     }
-    const { writeTextFile, BaseDirectory } = await fs();
-    await ensureDir();
-    await writeTextFile(`${NOTES_DIR}/${note.id}.md`, serialize(note), {
-      baseDir: BaseDirectory.AppData,
-    });
+    const { writeTextFile } = await fs();
+    const l = await loc();
+    await ensureDir(l);
+    await writeTextFile(l.file(`${note.id}.md`), serialize(note), l.opts);
   }).catch((e) => console.error("saveNote 失败", e));
 }
 
@@ -161,10 +186,11 @@ export function removeNote(id: string): Promise<void> {
       lsSaveAll(lsLoad().filter((n) => n.id !== id));
       return;
     }
-    const { remove, exists, BaseDirectory } = await fs();
-    const path = `${NOTES_DIR}/${id}.md`;
-    if (await exists(path, { baseDir: BaseDirectory.AppData })) {
-      await remove(path, { baseDir: BaseDirectory.AppData });
+    const { remove, exists } = await fs();
+    const l = await loc();
+    const path = l.file(`${id}.md`);
+    if (await exists(path, l.opts)) {
+      await remove(path, l.opts);
     }
   }).catch((e) => console.error("removeNote 失败", e));
 }

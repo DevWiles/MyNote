@@ -1,17 +1,82 @@
-import { useState } from "react";
-import { Settings as SettingsIcon, Eye, EyeOff, Check, Download, Sun, Moon } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  Settings as SettingsIcon,
+  Eye,
+  EyeOff,
+  Check,
+  Download,
+  Sun,
+  Moon,
+  FolderOpen,
+  RotateCcw,
+  FolderTree,
+} from "lucide-react";
 import type { ThemeMode } from "../types";
 import { useStore } from "../store/useStore";
 import { Button, inputClass } from "../components/ui";
+import {
+  getPaths,
+  savePaths,
+  defaultDirs,
+  migrateDataFile,
+} from "../store/paths";
+import { saveNote } from "../store/notesFs";
+
+const isTauri =
+  typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+
+async function pickDir(): Promise<string | null> {
+  try {
+    const { open } = await import("@tauri-apps/plugin-dialog");
+    const d = await open({ directory: true, title: "选择文件夹" });
+    return typeof d === "string" ? d : null;
+  } catch (e) {
+    console.error("选择文件夹失败", e);
+    return null;
+  }
+}
 
 export default function SettingsView() {
   const { settings, updateSettings, tasks, notes, events, reports } = useStore();
   const [showKey, setShowKey] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  // 存储位置
+  const [notesDir, setNotesDir] = useState("");
+  const [dataDir, setDataDir] = useState("");
+  const [defaults, setDefaults] = useState({
+    dataDefault: "",
+    notesDefault: "",
+  });
+  const [needRestart, setNeedRestart] = useState(false);
+
+  useEffect(() => {
+    getPaths().then((p) => {
+      setNotesDir(p.notesDir);
+      setDataDir(p.dataDir);
+    });
+    defaultDirs().then(setDefaults);
+  }, []);
+
   const markSaved = () => {
     setSaved(true);
     setTimeout(() => setSaved(false), 1500);
+  };
+
+  // 改笔记目录：写入引导配置，并把内存中的笔记复制到新位置（不删旧的）
+  const changeNotesDir = async (dir: string) => {
+    await savePaths({ notesDir: dir });
+    setNotesDir(dir);
+    await Promise.all(useStore.getState().notes.map(saveNote));
+    markSaved();
+  };
+  // 改数据目录：复制 mynote.json 到新位置，写入引导配置，提示重启生效
+  const changeDataDir = async (dir: string) => {
+    const prev = (await getPaths()).dataDir;
+    await migrateDataFile(prev, dir);
+    await savePaths({ dataDir: dir });
+    setDataDir(dir);
+    setNeedRestart(true);
   };
 
   const exportData = () => {
@@ -120,6 +185,74 @@ export default function SettingsView() {
               rows={6}
               className={`${inputClass} resize-none font-mono leading-relaxed`}
             />
+          </section>
+
+          {/* 存储位置 */}
+          <section>
+            <h2 className="mb-1 text-sm font-semibold text-ink">存储位置</h2>
+            <p className="mb-4 text-xs text-ink-soft">
+              默认保存在应用数据目录（相对路径）。可自定义文件夹；改动后会把现有内容复制到新位置（不删除旧文件）。
+            </p>
+            {!isTauri ? (
+              <p className="text-xs text-ink-soft/70">
+                （存储位置仅在桌面应用中可配置）
+              </p>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {[
+                  {
+                    key: "notes" as const,
+                    label: "笔记 .md 文件夹",
+                    cur: notesDir,
+                    def: defaults.notesDefault,
+                    onPick: changeNotesDir,
+                  },
+                  {
+                    key: "data" as const,
+                    label: "所有数据文件夹（mynote.json）",
+                    cur: dataDir,
+                    def: defaults.dataDefault,
+                    onPick: changeDataDir,
+                  },
+                ].map((row) => (
+                  <div key={row.key}>
+                    <span className="mb-1 flex items-center gap-1.5 text-xs text-ink-soft">
+                      <FolderTree size={13} />
+                      {row.label}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <code className="flex-1 truncate rounded-xl border border-mint-100 bg-surface px-3 py-2 text-xs text-ink">
+                        {row.cur || `默认 · ${row.def}`}
+                      </code>
+                      <button
+                        onClick={async () => {
+                          const d = await pickDir();
+                          if (d) await row.onPick(d);
+                        }}
+                        title="选择文件夹"
+                        className="flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-mint-100 px-3 text-xs text-ink-soft transition-colors hover:border-mint-300 hover:text-ink"
+                      >
+                        <FolderOpen size={15} /> 选择
+                      </button>
+                      {row.cur && (
+                        <button
+                          onClick={() => row.onPick("")}
+                          title="恢复默认"
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-mint-100 text-ink-soft transition-colors hover:border-mint-300 hover:text-ink"
+                        >
+                          <RotateCcw size={15} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {needRestart && (
+                  <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-600">
+                    数据文件夹已更改并复制，请重启应用使其生效。
+                  </p>
+                )}
+              </div>
+            )}
           </section>
 
           {/* 数据 */}
