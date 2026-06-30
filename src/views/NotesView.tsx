@@ -157,24 +157,6 @@ function Editor({
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      {/* 标题栏 */}
-      <div className="flex items-center gap-3 border-b border-mint-100 px-6 py-3">
-        <input
-          ref={titleRef}
-          value={note.title}
-          onChange={(e) => onChange({ title: e.target.value })}
-          placeholder="无标题"
-          className="flex-1 bg-transparent text-lg font-semibold text-ink outline-none placeholder:text-ink-soft/40"
-        />
-        <button
-          onClick={onDelete}
-          className="rounded-lg p-2 text-ink-soft transition-colors hover:bg-red-50 hover:text-red-500"
-          title="删除笔记"
-        >
-          <Trash2 size={17} />
-        </button>
-      </div>
-
       {/* 视图切换：双页（边写边预览）/ 单页（写↔预览），居中 */}
       <div className="flex items-center justify-center gap-2 border-b border-mint-100 px-6 py-2">
         <div className="flex items-center gap-0.5 rounded-xl bg-mint-50 p-0.5">
@@ -217,6 +199,24 @@ function Editor({
             )}
           </button>
         )}
+      </div>
+
+      {/* 标题栏 */}
+      <div className="flex items-center gap-3 border-b border-mint-100 px-6 py-3">
+        <input
+          ref={titleRef}
+          value={note.title}
+          onChange={(e) => onChange({ title: e.target.value })}
+          placeholder="无标题"
+          className="flex-1 bg-transparent text-lg font-semibold text-ink outline-none placeholder:text-ink-soft/40"
+        />
+        <button
+          onClick={onDelete}
+          className="rounded-lg p-2 text-ink-soft transition-colors hover:bg-red-50 hover:text-red-500"
+          title="删除笔记"
+        >
+          <Trash2 size={17} />
+        </button>
       </div>
 
       {/* 标签 */}
