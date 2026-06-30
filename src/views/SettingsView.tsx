@@ -65,20 +65,29 @@ export default function SettingsView() {
     setTimeout(() => setSaved(false), 1500);
   };
 
-  // 改笔记目录：写入引导配置，并把内存中的笔记复制到新位置（不删旧的）
-  const changeNotesDir = async (dir: string) => {
-    await savePaths({ notesDir: dir });
-    setNotesDir(dir);
+  // 在所选目录里嵌套 MyNote 子目录，避免和该文件夹已有内容混在一起
+  const nest = async (picked: string, sub: string) => {
+    const { join } = await import("@tauri-apps/api/path");
+    return join(picked, "MyNote", sub);
+  };
+
+  // 改笔记目录：picked="" 恢复默认，否则用 {picked}/MyNote/note；把内存笔记复制过去（不删旧）
+  const changeNotesDir = async (picked: string) => {
+    const target = picked ? await nest(picked, "note") : "";
+    await savePaths({ notesDir: target });
+    setNotesDir(target);
     await Promise.all(useStore.getState().notes.map(saveNote));
     markSaved();
   };
-  // 改数据目录：复制 mynote.json 到新位置（绝对路径），写入引导配置，提示重启生效
-  const changeDataDir = async (dir: string) => {
+  // 改数据目录：用 {picked}/MyNote/json，复制 mynote.json 过去（目标已有则不覆盖），提示重启
+  const changeDataDir = async (picked: string) => {
     const prevAbs = await resolveDataDir();
-    const nextAbs = dir || (await resolveBase());
+    const target = picked ? await nest(picked, "json") : "";
+    const { join } = await import("@tauri-apps/api/path");
+    const nextAbs = target || (await join(await resolveBase(), "json"));
     await migrateDataFile(prevAbs, nextAbs);
-    await savePaths({ dataDir: dir });
-    setDataDir(dir);
+    await savePaths({ dataDir: target });
+    setDataDir(target);
     setNeedRestart(true);
   };
 
@@ -194,7 +203,7 @@ export default function SettingsView() {
           <section>
             <h2 className="mb-1 text-sm font-semibold text-ink">存储位置</h2>
             <p className="mb-4 text-xs text-ink-soft">
-              笔记与所有数据保存在下面的文件夹。可自定义；改动后会把现有内容复制到新位置（不删除旧文件）。
+              选择文件夹后会在其中自动建 MyNote 子目录（笔记放 note/、数据放 json/），不与该文件夹已有内容混在一起。改动后会把现有内容复制过去（不删除旧文件）。
             </p>
             {!isTauri ? (
               <p className="text-xs text-ink-soft/70">
