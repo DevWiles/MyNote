@@ -218,7 +218,7 @@ export default function NotesView() {
                   onClick={() => checkedIds.size && setConfirmOpen(true)}
                   disabled={checkedIds.size === 0}
                   title="删除所选笔记"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-red-500 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg text-red-500 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <Trash2 size={16} />
                 </button>
