@@ -181,11 +181,7 @@ export default function TodoView() {
 
       {editing && <TaskEditor task={editing} onClose={() => setEditing(null)} />}
       {demote && (
-        <DemoteModal
-          target={demote}
-          onClose={() => setDemote(null)}
-          onDone={goLevel}
-        />
+        <DemoteModal target={demote} onClose={() => setDemote(null)} />
       )}
     </div>
   );
@@ -456,11 +452,9 @@ function TaskRow({
 function DemoteModal({
   target,
   onClose,
-  onDone,
 }: {
   target: DemoteTarget;
   onClose: () => void;
-  onDone: (lvl: PlanLevel) => void;
 }) {
   const { addTask, promoteSubtask } = useStore();
   const { parent, subId, subTitle } = target;
@@ -478,8 +472,7 @@ function DemoteModal({
       if (!t) return;
       addTask({ title: t, level, parentId: parent.id });
     }
-    onDone(level);
-    onClose();
+    onClose(); // 不跳转到目标层级，留在当前页
   };
 
   return (
