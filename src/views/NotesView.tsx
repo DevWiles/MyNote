@@ -406,6 +406,26 @@ function Editor({
         </button>
       </div>
 
+      {/* Markdown 快捷工具栏（居中，仅书写区可见时显示） */}
+      {(viewMode === "split" || singlePane === "write") && (
+        <div className="flex items-center justify-center gap-0.5 overflow-x-auto border-b border-mint-100 px-4 py-1.5">
+          {tools.map((t, i) =>
+            t === "divider" ? (
+              <span key={i} className="mx-1 h-4 w-px shrink-0 bg-mint-100" />
+            ) : (
+              <button
+                key={i}
+                onClick={t.run}
+                title={t.title}
+                className="flex shrink-0 items-center justify-center rounded-lg p-1.5 text-ink-soft transition-colors hover:bg-mint-50 hover:text-ink"
+              >
+                <t.icon size={16} />
+              </button>
+            ),
+          )}
+        </div>
+      )}
+
       {/* 标题栏 */}
       <div className="flex items-center gap-3 border-b border-mint-100 px-6 py-3">
         <input
@@ -423,26 +443,6 @@ function Editor({
           <Trash2 size={17} />
         </button>
       </div>
-
-      {/* Markdown 快捷工具栏（仅书写区可见时显示） */}
-      {(viewMode === "split" || singlePane === "write") && (
-        <div className="flex items-center gap-0.5 overflow-x-auto border-b border-mint-100 px-4 py-1.5">
-          {tools.map((t, i) =>
-            t === "divider" ? (
-              <span key={i} className="mx-1 h-4 w-px shrink-0 bg-mint-100" />
-            ) : (
-              <button
-                key={i}
-                onClick={t.run}
-                title={t.title}
-                className="flex shrink-0 items-center justify-center rounded-lg p-1.5 text-ink-soft transition-colors hover:bg-mint-50 hover:text-ink"
-              >
-                <t.icon size={16} />
-              </button>
-            ),
-          )}
-        </div>
-      )}
 
       {/* 内容区：编辑面板 + 大纲 */}
       <div className="flex flex-1 overflow-hidden">
