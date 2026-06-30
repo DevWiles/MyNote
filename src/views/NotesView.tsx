@@ -41,6 +41,15 @@ export default function NotesView() {
   const [createdId, setCreatedId] = useState<string | null>(null);
   /** 折叠笔记列表（逻辑同侧边栏折叠） */
   const [listCollapsed, setListCollapsed] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
+  /** 折叠态点放大镜后，展开列表并聚焦搜索框 */
+  const wantFocusSearch = useRef(false);
+  useEffect(() => {
+    if (!listCollapsed && wantFocusSearch.current) {
+      wantFocusSearch.current = false;
+      searchRef.current?.focus();
+    }
+  }, [listCollapsed]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -71,8 +80,8 @@ export default function NotesView() {
         ].join(" ")}
       >
         {listCollapsed ? (
-          /* 折叠态：仅图标——展开按钮 + 新建（靠左，与展开态左对齐，收起不抖） */
-          <div className="flex w-[60px] shrink-0 flex-col items-start gap-2 px-3 py-4">
+          /* 折叠态：头像轨道——展开/新建/搜索入口 + 各笔记首字 coin 占位 */
+          <div className="flex h-full w-[60px] shrink-0 flex-col items-center gap-2 py-4">
             <button
               onClick={() => setListCollapsed(false)}
               title="展开笔记列表"
@@ -87,6 +96,41 @@ export default function NotesView() {
             >
               <Plus size={18} />
             </button>
+            <button
+              onClick={() => {
+                wantFocusSearch.current = true;
+                setListCollapsed(false);
+              }}
+              title="搜索笔记"
+              className="flex h-9 w-9 items-center justify-center rounded-xl text-ink-soft transition-colors hover:bg-mint-50 hover:text-ink"
+            >
+              <Search size={18} />
+            </button>
+
+            {notes.length > 0 && <div className="my-0.5 h-px w-7 bg-mint-100" />}
+
+            {/* 笔记首字头像 coin */}
+            <div className="flex w-full flex-1 flex-col items-center gap-1.5 overflow-y-auto">
+              {notes.map((n) => {
+                const label = n.title.trim() || "未命名笔记";
+                const active = n.id === selectedId;
+                return (
+                  <button
+                    key={n.id}
+                    onClick={() => setSelectedId(n.id)}
+                    title={label}
+                    className={[
+                      "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-medium transition-colors",
+                      active
+                        ? "bg-mint-400 text-white"
+                        : "bg-mint-50 text-ink hover:bg-mint-100",
+                    ].join(" ")}
+                  >
+                    {label[0]}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         ) : (
           /* 展开态内容固定 w-64，过渡时由父级 overflow 裁剪显示，不随宽度重排 */
@@ -119,6 +163,7 @@ export default function NotesView() {
               <div className="flex items-center gap-2 rounded-xl border border-mint-100 bg-surface px-2.5 py-1.5 focus-within:border-mint-300">
                 <Search size={15} className="text-ink-soft" />
                 <input
+                  ref={searchRef}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="搜索笔记"
