@@ -38,7 +38,7 @@ export default function Sidebar({ active, onSelect }: Props) {
     <aside
       className={[
         "flex shrink-0 flex-col overflow-hidden rounded-2xl bg-mint-50 shadow-[0_8px_28px_-6px_rgba(0,0,0,0.22)] ring-1 ring-black/[0.05] transition-[width] duration-200",
-        collapsed ? "w-16" : "w-60",
+        collapsed ? "w-20" : "w-60",
       ].join(" ")}
     >
       {/* 顶部留白：给 macOS 红绿灯按钮腾位置，同时作为窗口拖拽区 */}

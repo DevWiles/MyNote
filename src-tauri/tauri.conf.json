@@ -22,7 +22,7 @@
         "shadow": true,
         "titleBarStyle": "Overlay",
         "hiddenTitle": true,
-        "trafficLightPosition": { "x": 22, "y": 26 }
+        "trafficLightPosition": { "x": 14, "y": 18 }
       }
     ],
     "macOSPrivateApi": true,

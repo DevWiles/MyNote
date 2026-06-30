@@ -2,7 +2,7 @@
 name = "mynote"
 version = "0.1.0"
 description = "MyNote - 待办、笔记、日程三合一的小清新桌面应用"
-authors = ["Chris Lee"]
+authors = ["DevWiles"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
