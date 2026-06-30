@@ -27,6 +27,7 @@ import {
   Table,
   TextQuote,
   Trash2,
+  TriangleAlert,
 } from "lucide-react";
 import type { ComponentType } from "react";
 import { useStore } from "../store/useStore";
@@ -359,15 +360,32 @@ export default function NotesView() {
             <Button variant="ghost" onClick={() => setConfirmOpen(false)}>
               取消
             </Button>
-            <Button variant="danger" onClick={confirmDelete}>
+            <button
+              onClick={confirmDelete}
+              className="rounded-xl bg-red-500 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-red-500/30 transition-colors hover:bg-red-600"
+            >
               删除 {checkedIds.size} 篇
-            </Button>
+            </button>
           </>
         }
       >
-        <p className="text-sm text-ink">
-          确定删除选中的 {checkedIds.size} 篇笔记吗？此操作无法撤销。
-        </p>
+        <div className="flex items-start gap-3.5">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-500 ring-4 ring-red-50">
+            <TriangleAlert size={22} />
+          </div>
+          <div className="flex-1 pt-0.5">
+            <p className="text-sm text-ink">
+              确定删除选中的{" "}
+              <span className="font-semibold text-red-500">
+                {checkedIds.size}
+              </span>{" "}
+              篇笔记吗？
+            </p>
+            <p className="mt-1.5 text-sm text-red-500/90">
+              此操作无法撤销，对应的 .md 文件将被永久删除。
+            </p>
+          </div>
+        </div>
       </Modal>
     </div>
   );
