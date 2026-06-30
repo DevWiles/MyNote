@@ -90,25 +90,30 @@ export default function NotesView() {
           </div>
         ) : (
           <>
-            {/* 第一行：新建笔记入口 + 折叠按钮 */}
-            <div className="flex items-center gap-2 px-3 pt-4">
-              <button
-                onClick={createNote}
-                className="flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-mint-400 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-mint-500"
-              >
-                <Plus size={16} />
-                新建笔记
-              </button>
+            {/* 页面标题 + 折叠按钮 */}
+            <div className="flex items-center justify-between px-4 pb-1 pt-4">
+              <h1 className="text-xl font-semibold text-ink">笔记</h1>
               <button
                 onClick={() => setListCollapsed(true)}
                 title="折叠笔记列表"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-ink-soft transition-colors hover:bg-mint-50 hover:text-ink"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-ink-soft transition-colors hover:bg-mint-50 hover:text-ink"
               >
                 <PanelLeft size={18} />
               </button>
             </div>
 
-            {/* 第二行：搜索 */}
+            {/* 新建笔记（标题下方、列表上方） */}
+            <div className="px-3 pt-2">
+              <button
+                onClick={createNote}
+                className="flex w-full items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-mint-400 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-mint-500"
+              >
+                <Plus size={16} />
+                新建笔记
+              </button>
+            </div>
+
+            {/* 搜索 */}
             <div className="px-3 pb-2 pt-3">
               <div className="flex items-center gap-2 rounded-xl border border-mint-100 bg-surface px-2.5 py-1.5 focus-within:border-mint-300">
                 <Search size={15} className="text-ink-soft" />
