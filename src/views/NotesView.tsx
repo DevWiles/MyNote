@@ -1,5 +1,14 @@
-import { useMemo, useState } from "react";
-import { NotebookPen, Plus, Search, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Columns2,
+  Eye,
+  NotebookPen,
+  Pencil,
+  Plus,
+  Search,
+  Square,
+  Trash2,
+} from "lucide-react";
 import { useStore } from "../store/useStore";
 import { fmtDate } from "../lib/date";
 import { EmptyState, Tag } from "../components/ui";
@@ -11,6 +20,8 @@ export default function NotesView() {
   const [selectedId, setSelectedId] = useState<string | null>(
     notes[0]?.id ?? null,
   );
+  /** 刚新建的笔记 id，用于让标题输入框自动获焦 */
+  const [createdId, setCreatedId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -28,6 +39,7 @@ export default function NotesView() {
   const createNote = () => {
     const id = addNote({ title: "未命名笔记", body: "" });
     setSelectedId(id);
+    setCreatedId(id);
   };
 
   return (
@@ -90,6 +102,7 @@ export default function NotesView() {
         <Editor
           key={selected.id}
           note={selected}
+          autoFocusTitle={selected.id === createdId}
           onChange={(patch) => updateNote(selected.id, patch)}
           onDelete={() => {
             deleteNote(selected.id);
@@ -106,22 +119,48 @@ export default function NotesView() {
   );
 }
 
+type ViewMode = "split" | "single";
+type SinglePane = "write" | "preview";
+
 function Editor({
   note,
+  autoFocusTitle,
   onChange,
   onDelete,
 }: {
   note: { id: string; title: string; body: string; tags: string[] };
+  autoFocusTitle: boolean;
   onChange: (patch: { title?: string; body?: string; tags?: string[] }) => void;
   onDelete: () => void;
 }) {
   const [tagInput, setTagInput] = useState(note.tags.join(", "));
+  const [viewMode, setViewMode] = useState<ViewMode>("split");
+  const [singlePane, setSinglePane] = useState<SinglePane>("write");
+  const titleRef = useRef<HTMLInputElement>(null);
+
+  // 新建笔记时，光标落在标题处并选中默认标题，便于直接覆盖输入
+  useEffect(() => {
+    if (autoFocusTitle) {
+      titleRef.current?.focus();
+      titleRef.current?.select();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const seg = (active: boolean) =>
+    [
+      "flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs transition-colors",
+      active
+        ? "bg-surface text-ink shadow-sm"
+        : "text-ink-soft hover:text-ink",
+    ].join(" ");
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       {/* 标题栏 */}
       <div className="flex items-center gap-3 border-b border-mint-100 px-6 py-3">
         <input
+          ref={titleRef}
           value={note.title}
           onChange={(e) => onChange({ title: e.target.value })}
           placeholder="无标题"
@@ -134,6 +173,50 @@ function Editor({
         >
           <Trash2 size={17} />
         </button>
+      </div>
+
+      {/* 视图切换：双页（边写边预览）/ 单页（写↔预览），居中 */}
+      <div className="flex items-center justify-center gap-2 border-b border-mint-100 px-6 py-2">
+        <div className="flex items-center gap-0.5 rounded-xl bg-mint-50 p-0.5">
+          <button
+            onClick={() => setViewMode("split")}
+            className={seg(viewMode === "split")}
+            title="双页：边写边预览"
+          >
+            <Columns2 size={14} />
+            双页
+          </button>
+          <button
+            onClick={() => setViewMode("single")}
+            className={seg(viewMode === "single")}
+            title="单页"
+          >
+            <Square size={14} />
+            单页
+          </button>
+        </div>
+
+        {viewMode === "single" && (
+          <button
+            onClick={() =>
+              setSinglePane((p) => (p === "write" ? "preview" : "write"))
+            }
+            className="flex items-center gap-1.5 rounded-lg border border-mint-100 px-2.5 py-1 text-xs text-ink-soft transition-colors hover:border-mint-300 hover:text-ink"
+            title={singlePane === "write" ? "预览编译结果" : "返回编辑"}
+          >
+            {singlePane === "write" ? (
+              <>
+                <Eye size={14} />
+                预览
+              </>
+            ) : (
+              <>
+                <Pencil size={14} />
+                编辑
+              </>
+            )}
+          </button>
+        )}
       </div>
 
       {/* 标签 */}
@@ -159,23 +242,37 @@ function Editor({
         </div>
       </div>
 
-      {/* 分屏：左源码 右预览 */}
+      {/* 内容区：双页并排 / 单页（写或预览） */}
       <div className="flex flex-1 overflow-hidden">
-        <textarea
-          value={note.body}
-          onChange={(e) => onChange({ body: e.target.value })}
-          placeholder="在此用 Markdown 书写…"
-          spellCheck={false}
-          className="h-full w-1/2 resize-none border-r border-mint-100 bg-surface p-6 font-mono text-sm leading-relaxed text-ink outline-none placeholder:text-ink-soft/40"
-          style={{ userSelect: "text" }}
-        />
-        <div className="h-full w-1/2 overflow-y-auto bg-paper p-6">
-          {note.body.trim() ? (
-            <Markdown>{note.body}</Markdown>
-          ) : (
-            <p className="text-sm text-ink-soft/50">预览区</p>
-          )}
-        </div>
+        {(viewMode === "split" || singlePane === "write") && (
+          <textarea
+            value={note.body}
+            onChange={(e) => onChange({ body: e.target.value })}
+            placeholder="在此用 Markdown 书写…"
+            spellCheck={false}
+            className={[
+              "h-full resize-none bg-surface p-6 font-mono text-sm leading-relaxed text-ink outline-none placeholder:text-ink-soft/40",
+              viewMode === "split"
+                ? "w-1/2 border-r border-mint-100"
+                : "w-full",
+            ].join(" ")}
+            style={{ userSelect: "text" }}
+          />
+        )}
+        {(viewMode === "split" || singlePane === "preview") && (
+          <div
+            className={[
+              "h-full overflow-y-auto bg-paper p-6",
+              viewMode === "split" ? "w-1/2" : "w-full",
+            ].join(" ")}
+          >
+            {note.body.trim() ? (
+              <Markdown>{note.body}</Markdown>
+            ) : (
+              <p className="text-sm text-ink-soft/50">预览区</p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
