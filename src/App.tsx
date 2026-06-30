@@ -8,6 +8,7 @@ import ScheduleView from "./views/ScheduleView";
 import ReportsView from "./views/ReportsView";
 import SettingsView from "./views/SettingsView";
 import { useStore } from "./store/useStore";
+import { loadNotes, saveNote } from "./store/notesFs";
 import type { ViewKey } from "./types";
 
 const VIEWS: Record<ViewKey, React.ReactNode> = {
@@ -22,6 +23,40 @@ export default function App() {
   const [active, setActive] = useState<ViewKey>("today");
   const theme = useStore((s) => s.settings.theme) ?? "light";
   const didInit = useRef(false);
+  const didLoadNotes = useRef(false);
+
+  // 从磁盘 .md 文件加载笔记；若磁盘为空但旧版数据里还有笔记，则迁移落盘
+  useEffect(() => {
+    if (didLoadNotes.current) return;
+    didLoadNotes.current = true;
+    (async () => {
+      const ready = () => {
+        useStore.getState().setNotesReady(true);
+      };
+      try {
+        // 等 persist 水合完成，旧笔记（若有）此时已在 state 里，便于迁移
+        if (!useStore.persist.hasHydrated()) {
+          await new Promise<void>((res) => {
+            const unsub = useStore.persist.onFinishHydration(() => {
+              unsub();
+              res();
+            });
+          });
+        }
+        const fsNotes = await loadNotes();
+        if (fsNotes.length > 0) {
+          useStore.getState().setNotes(fsNotes);
+        } else {
+          const old = useStore.getState().notes;
+          if (old.length > 0) await Promise.all(old.map(saveNote)); // 一次性迁移
+        }
+      } catch (e) {
+        console.error("加载笔记失败", e);
+      } finally {
+        ready();
+      }
+    })();
+  }, []);
 
   // 主题切换：① webview 加 .dark 类驱动 CSS 变量；② 原生窗口切外观，
   // 让 macOS 毛玻璃随之变成 亮=白色磨砂 / 暗=灰色磨砂。

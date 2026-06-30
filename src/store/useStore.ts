@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { appStorage } from "./storage";
+import { saveNote, removeNote, removeNotes } from "./notesFs";
 import type {
   Task,
   Note,
@@ -27,6 +28,8 @@ export interface AppState {
   reports: Report[];
   settings: Settings;
   noteView: NoteViewPrefs;
+  /** 笔记是否已从磁盘加载完成（不持久化） */
+  notesReady: boolean;
 
   // 待办
   addTask: (input: {
@@ -56,6 +59,9 @@ export interface AppState {
   deleteNote: (id: string) => void;
   /** 批量删除笔记 */
   deleteNotes: (ids: string[]) => void;
+  /** 用磁盘加载结果整体替换笔记 */
+  setNotes: (notes: Note[]) => void;
+  setNotesReady: (v: boolean) => void;
 
   // 日程
   addEvent: (input: {
@@ -93,6 +99,7 @@ export const useStore = create<AppState>()(
         theme: "light",
       },
       noteView: { mode: "split", pane: "write", outline: true },
+      notesReady: false,
 
       addTask: (input) =>
         set((s) => ({
@@ -294,34 +301,41 @@ export const useStore = create<AppState>()(
         }),
 
       addNote: (input) => {
-        const id = uid();
-        set((s) => ({
-          notes: [
-            {
-              id,
-              title: input?.title ?? "",
-              body: input?.body ?? "",
-              tags: input?.tags ?? [],
-              createdAt: now(),
-              updatedAt: now(),
-            },
-            ...s.notes,
-          ],
-        }));
-        return id;
+        const note: Note = {
+          id: uid(),
+          title: input?.title ?? "",
+          body: input?.body ?? "",
+          tags: input?.tags ?? [],
+          createdAt: now(),
+          updatedAt: now(),
+        };
+        set((s) => ({ notes: [note, ...s.notes] }));
+        void saveNote(note); // 落盘为 .md
+        return note.id;
       },
       updateNote: (id, patch) =>
-        set((s) => ({
-          notes: s.notes.map((n) =>
-            n.id === id ? { ...n, ...patch, updatedAt: now() } : n,
-          ),
-        })),
-      deleteNote: (id) =>
-        set((s) => ({ notes: s.notes.filter((n) => n.id !== id) })),
+        set((s) => {
+          let updated: Note | null = null;
+          const notes = s.notes.map((n) => {
+            if (n.id !== id) return n;
+            updated = { ...n, ...patch, updatedAt: now() };
+            return updated;
+          });
+          if (updated) void saveNote(updated); // 同步落盘
+          return { notes };
+        }),
+      deleteNote: (id) => {
+        set((s) => ({ notes: s.notes.filter((n) => n.id !== id) }));
+        void removeNote(id);
+      },
       deleteNotes: (ids) => {
         const rm = new Set(ids);
         set((s) => ({ notes: s.notes.filter((n) => !rm.has(n.id)) }));
+        void removeNotes(ids);
       },
+
+      setNotes: (notes) => set({ notes }),
+      setNotesReady: (v) => set({ notesReady: v }),
 
       addEvent: (input) =>
         set((s) => ({
@@ -379,9 +393,9 @@ export const useStore = create<AppState>()(
         }
         return state as AppState;
       },
+      // 笔记改为独立 .md 文件存储，不再进 mynote.json
       partialize: (s) => ({
         tasks: s.tasks,
-        notes: s.notes,
         events: s.events,
         reports: s.reports,
         settings: s.settings,

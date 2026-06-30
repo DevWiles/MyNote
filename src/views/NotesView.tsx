@@ -5,6 +5,7 @@ import {
   CheckSquare,
   Code,
   Columns2,
+  Download,
   Heading2,
   Image as ImageIcon,
   Italic,
@@ -33,9 +34,11 @@ import { fmtDate } from "../lib/date";
 import { Button, EmptyState } from "../components/ui";
 import Modal from "../components/Modal";
 import Markdown from "../components/Markdown";
+import { exportNotes } from "../store/notesFs";
 
 export default function NotesView() {
-  const { notes, addNote, updateNote, deleteNote, deleteNotes } = useStore();
+  const { notes, addNote, updateNote, deleteNote, deleteNotes, notesReady } =
+    useStore();
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(
     notes[0]?.id ?? null,
@@ -53,6 +56,13 @@ export default function NotesView() {
       searchRef.current?.focus();
     }
   }, [listCollapsed]);
+
+  // 笔记从磁盘加载完成后，若尚未选中则默认选第一篇
+  useEffect(() => {
+    if (notesReady && selectedId === null && notes.length > 0) {
+      setSelectedId(notes[0].id);
+    }
+  }, [notesReady, notes, selectedId]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -86,6 +96,10 @@ export default function NotesView() {
     filtered.length > 0 && filtered.every((n) => checkedIds.has(n.id));
   const toggleAll = () =>
     setCheckedIds(allChecked ? new Set() : new Set(filtered.map((n) => n.id)));
+  const exportChecked = () => {
+    const picked = notes.filter((n) => checkedIds.has(n.id));
+    if (picked.length) void exportNotes(picked);
+  };
   const confirmDelete = () => {
     const ids = [...checkedIds];
     deleteNotes(ids);
@@ -215,6 +229,14 @@ export default function NotesView() {
                   已选 {checkedIds.size}
                 </span>
                 <button
+                  onClick={exportChecked}
+                  disabled={checkedIds.size === 0}
+                  title="导出所选为 .md"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-mint-50 hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <Download size={16} />
+                </button>
+                <button
                   onClick={() => checkedIds.size && setConfirmOpen(true)}
                   disabled={checkedIds.size === 0}
                   title="删除所选笔记"
@@ -252,7 +274,11 @@ export default function NotesView() {
             <div className="flex-1 overflow-y-auto px-2 pb-3">
               {filtered.length === 0 ? (
                 <p className="px-3 py-8 text-center text-sm text-ink-soft">
-                  {notes.length === 0 ? "还没有笔记" : "没有匹配的笔记"}
+                  {!notesReady
+                    ? "加载中…"
+                    : notes.length === 0
+                      ? "还没有笔记"
+                      : "没有匹配的笔记"}
                 </p>
               ) : (
                 filtered.map((n) => {
@@ -310,6 +336,7 @@ export default function NotesView() {
           note={selected}
           autoFocusTitle={selected.id === createdId}
           onChange={(patch) => updateNote(selected.id, patch)}
+          onExport={() => void exportNotes([selected])}
           onDelete={() => {
             deleteNote(selected.id);
             const rest = notes.filter((n) => n.id !== selected.id);
@@ -390,11 +417,13 @@ function Editor({
   note,
   autoFocusTitle,
   onChange,
+  onExport,
   onDelete,
 }: {
   note: { id: string; title: string; body: string };
   autoFocusTitle: boolean;
   onChange: (patch: { title?: string; body?: string }) => void;
+  onExport: () => void;
   onDelete: () => void;
 }) {
   const { noteView, setNoteView } = useStore();
@@ -650,6 +679,13 @@ function Editor({
           placeholder="无标题"
           className="flex-1 bg-transparent text-lg font-semibold text-ink outline-none placeholder:text-ink-soft/40"
         />
+        <button
+          onClick={onExport}
+          className="rounded-lg p-2 text-ink-soft transition-colors hover:bg-mint-50 hover:text-ink"
+          title="导出为 .md"
+        >
+          <Download size={17} />
+        </button>
         <button
           onClick={onDelete}
           className="rounded-lg p-2 text-ink-soft transition-colors hover:bg-red-50 hover:text-red-500"
