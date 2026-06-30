@@ -16,18 +16,11 @@ import {
 import { useStore } from "../store/useStore";
 import type { Task, Priority, PlanLevel } from "../types";
 import { fmtDate, isOverdue, toDateInput, fromDateInput } from "../lib/date";
+import { LEVEL_LABEL, LEVEL_RANK, LEVEL_STYLE } from "../lib/levels";
 import { Button, EmptyState, PRIORITY_META, Tag, inputClass } from "../components/ui";
 import Modal from "../components/Modal";
 
 type Filter = "all" | "upcoming" | "done";
-
-const LEVEL_LABEL: Record<PlanLevel, string> = {
-  day: "日",
-  week: "周",
-  month: "月",
-  year: "年",
-};
-const LEVEL_RANK: Record<PlanLevel, number> = { day: 0, week: 1, month: 2, year: 3 };
 
 // 按层级从低到高展示的切换器顺序
 const PERIODS: { key: PlanLevel; label: string }[] = [
@@ -222,7 +215,6 @@ function TaskRow({
   const parent = task.parentId ? tasks.find((t) => t.id === task.parentId) : null;
   const children = tasks.filter((t) => t.parentId === task.id);
   const childLevels = [...new Set(children.map((c) => LEVEL_LABEL[c.level]))].join("·");
-  const isSkip = parent && LEVEL_RANK[parent.level] - LEVEL_RANK[task.level] > 1;
   const canDemote = lowerLevels(task.level).length > 0;
 
   const [expanded, setExpanded] = useState(false);
@@ -268,9 +260,14 @@ function TaskRow({
 
         <div className="min-w-0 flex-1">
           <p
-            className={`truncate text-sm ${
-              task.done ? "text-ink-soft line-through" : "text-ink"
-            }`}
+            className={[
+              "truncate text-sm",
+              task.done
+                ? "text-mint-600 line-through"
+                : overdue
+                  ? "text-red-500"
+                  : "text-ink",
+            ].join(" ")}
           >
             {task.title}
           </p>
@@ -290,15 +287,14 @@ function TaskRow({
               <button
                 onClick={() => onNavigate(parent.level)}
                 title="跳到所属规划"
-                className={[
-                  "flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-xs font-medium transition-colors",
-                  isSkip
-                    ? "border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100"
-                    : "border-mint-100 bg-mint-50 text-mint-600 hover:bg-mint-100",
-                ].join(" ")}
+                style={{
+                  backgroundColor: LEVEL_STYLE[parent.level].badgeBg,
+                  color: LEVEL_STYLE[parent.level].badgeText,
+                }}
+                className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium transition-opacity hover:opacity-80"
               >
                 <ArrowUpRight size={12} />
-                {isSkip && "越级·"}所属 {parent.title} · {LEVEL_LABEL[parent.level]}
+                所属 {parent.title} · {LEVEL_LABEL[parent.level]}
               </button>
             )}
             {/* 已下放的子规划 */}
@@ -364,7 +360,6 @@ function TaskRow({
                 已下放的子规划
               </p>
               {children.map((c) => {
-                const cSkip = LEVEL_RANK[task.level] - LEVEL_RANK[c.level] > 1;
                 return (
                   <div
                     key={c.id}
@@ -372,14 +367,12 @@ function TaskRow({
                   >
                     <CornerDownRight size={13} className="shrink-0 text-mint-400" />
                     <span
-                      className={[
-                        "shrink-0 rounded px-1.5 py-0.5 text-[11px] font-semibold",
-                        cSkip
-                          ? "bg-amber-50 text-amber-600"
-                          : "bg-mint-50 text-mint-600",
-                      ].join(" ")}
+                      style={{
+                        backgroundColor: LEVEL_STYLE[c.level].badgeBg,
+                        color: LEVEL_STYLE[c.level].badgeText,
+                      }}
+                      className="shrink-0 rounded px-1.5 py-0.5 text-[11px] font-semibold"
                     >
-                      {cSkip && "越级·"}
                       {LEVEL_LABEL[c.level]}
                     </span>
                     <button

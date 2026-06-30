@@ -24,6 +24,11 @@ import { useStore } from "../store/useStore";
 import type { Report, ReportType, Task, PlanLevel } from "../types";
 import { deepseekChat } from "../lib/deepseek";
 import { fmtDate, fmtDateTime } from "../lib/date";
+import {
+  LEVEL_LABEL as LV_LABEL,
+  LEVEL_RANK as LV_RANK,
+  LEVEL_STYLE,
+} from "../lib/levels";
 import { Button, EmptyState } from "../components/ui";
 import Markdown from "../components/Markdown";
 
@@ -327,14 +332,6 @@ export default function ReportsView() {
 
 /* ----------------------- 待办工作树（git-graph 形式） ----------------------- */
 
-const LV_LABEL: Record<PlanLevel, string> = {
-  day: "日",
-  week: "周",
-  month: "月",
-  year: "年",
-};
-const LV_RANK: Record<PlanLevel, number> = { day: 0, week: 1, month: 2, year: 3 };
-
 type TreeNode = {
   key: string;
   kind: "task" | "sub";
@@ -389,16 +386,6 @@ function countTreeTasks(rootId: string, tasks: Task[]): number {
   return count;
 }
 
-/** 各层级配色（线 / 徽标底 / 徽标字），彼此可分辨且不过饱和 */
-const LEVEL_STYLE: Record<
-  PlanLevel,
-  { line: string; badgeBg: string; badgeText: string }
-> = {
-  year: { line: "#34a07a", badgeBg: "#e3f4ec", badgeText: "#1f6650" },
-  month: { line: "#3f97d1", badgeBg: "#e4f1f9", badgeText: "#1f6f9c" },
-  week: { line: "#8f78dd", badgeBg: "#ece7f8", badgeText: "#5f48ad" },
-  day: { line: "#e0a03c", badgeBg: "#fbefd8", badgeText: "#a96c0c" },
-};
 const SUB_LINE = "#c2d4cd";
 const lineFor = (lvl?: PlanLevel) => (lvl ? LEVEL_STYLE[lvl].line : SUB_LINE);
 
@@ -419,7 +406,6 @@ function NodeLabel({ node }: { node: TreeNode }) {
           className="rounded px-1.5 py-0.5 text-[11px] font-semibold"
           style={{ backgroundColor: st.badgeBg, color: st.badgeText }}
         >
-          {node.skip && "越级·"}
           {LV_LABEL[node.level]}
         </span>
       )}

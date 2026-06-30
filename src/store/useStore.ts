@@ -146,7 +146,21 @@ export const useStore = create<AppState>()(
           };
         }),
       deleteTask: (id) =>
-        set((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) })),
+        set((s) => {
+          // 连同所有下放/越级出去的后代规划一并删除，避免留下悬空的子规划
+          const remove = new Set<string>([id]);
+          let grew = true;
+          while (grew) {
+            grew = false;
+            for (const t of s.tasks) {
+              if (t.parentId && remove.has(t.parentId) && !remove.has(t.id)) {
+                remove.add(t.id);
+                grew = true;
+              }
+            }
+          }
+          return { tasks: s.tasks.filter((t) => !remove.has(t.id)) };
+        }),
 
       addSubtask: (taskId, title) => {
         const name = title.trim();
