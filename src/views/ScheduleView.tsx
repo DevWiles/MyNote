@@ -42,7 +42,7 @@ export default function ScheduleView() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex items-center justify-between border-b border-mint-100 px-8 py-5">
+      <header data-tauri-drag-region className="flex items-center justify-between border-b border-mint-100 px-8 py-5">
         <div className="flex items-center gap-3">
           <CalendarDays size={22} className="text-mint-500" strokeWidth={2.2} />
           <h1 className="text-xl font-semibold text-ink">日程</h1>

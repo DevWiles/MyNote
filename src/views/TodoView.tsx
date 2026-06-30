@@ -91,7 +91,7 @@ export default function TodoView() {
 
   return (
     <div className="relative flex h-full flex-col">
-      <header className="border-b border-mint-100 px-8 pt-5">
+      <header data-tauri-drag-region className="border-b border-mint-100 px-8 pt-5">
         <div className="relative mb-4 flex items-center">
           <div className="flex items-center gap-3">
             <CheckSquare size={22} className="text-mint-500" strokeWidth={2.2} />

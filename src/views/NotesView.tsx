@@ -184,7 +184,10 @@ export default function NotesView() {
           /* 展开态内容固定 w-64，过渡时由父级 overflow 裁剪显示，不随宽度重排 */
           <div className="flex h-full w-64 shrink-0 flex-col">
             {/* 页面标题 + 多选/折叠按钮 */}
-            <div className="flex items-center justify-between px-4 pb-1 pt-4">
+            <div
+              data-tauri-drag-region
+              className="flex items-center justify-between px-4 pb-1 pt-4"
+            >
               <div className="flex items-center gap-2">
                 <NotebookPen
                   size={20}
@@ -612,7 +615,10 @@ function Editor({
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       {/* 视图切换：双页（边写边预览）/ 单页（写↔预览），居中 */}
-      <div className="relative flex shrink-0 items-center justify-center gap-2 border-b border-mint-100 px-6 py-2">
+      <div
+        data-tauri-drag-region
+        className="relative flex shrink-0 items-center justify-center gap-2 border-b border-mint-100 px-6 py-2"
+      >
         <div className="flex items-center gap-0.5 rounded-xl bg-mint-50 p-0.5">
           <button
             onClick={() => setNoteView({ mode: "split" })}
