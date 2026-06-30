@@ -63,16 +63,16 @@ export default function NotesView() {
 
   return (
     <div className="flex h-full">
-      {/* 笔记列表（可折叠，逻辑同侧边栏：即时切换宽度、overflow-hidden 防抖） */}
+      {/* 笔记列表（可折叠）：平滑过渡宽度，避免瞬间跳变导致的闪烁 */}
       <div
         className={[
-          "flex shrink-0 flex-col overflow-hidden border-r border-mint-100",
+          "flex shrink-0 flex-col overflow-hidden border-r border-mint-100 transition-[width] duration-200 ease-out",
           listCollapsed ? "w-[60px]" : "w-64",
         ].join(" ")}
       >
         {listCollapsed ? (
           /* 折叠态：仅图标——展开按钮 + 新建（靠左，与展开态左对齐，收起不抖） */
-          <div className="flex flex-col items-start gap-2 px-3 py-4">
+          <div className="flex w-[60px] shrink-0 flex-col items-start gap-2 px-3 py-4">
             <button
               onClick={() => setListCollapsed(false)}
               title="展开笔记列表"
@@ -89,7 +89,8 @@ export default function NotesView() {
             </button>
           </div>
         ) : (
-          <>
+          /* 展开态内容固定 w-64，过渡时由父级 overflow 裁剪显示，不随宽度重排 */
+          <div className="flex h-full w-64 shrink-0 flex-col">
             {/* 页面标题 + 折叠按钮 */}
             <div className="flex items-center justify-between px-4 pb-1 pt-4">
               <h1 className="text-xl font-semibold text-ink">笔记</h1>
@@ -154,7 +155,7 @@ export default function NotesView() {
                 ))
               )}
             </div>
-          </>
+          </div>
         )}
       </div>
 
