@@ -70,16 +70,20 @@ export async function resolveBase(): Promise<string> {
   return join(await homeDir(), "MyNote");
 }
 
-/** 笔记 .md 实际目录（自定义 or 默认基目录） */
+/** 笔记 .md 实际目录（自定义 or 默认 ~/MyNote/note） */
 export async function resolveNotesDir(): Promise<string> {
   const { notesDir } = await getPaths();
-  return notesDir || resolveBase();
+  if (notesDir) return notesDir;
+  const { join } = await import("@tauri-apps/api/path");
+  return join(await resolveBase(), "note");
 }
 
-/** 数据实际目录（自定义 or 默认基目录） */
+/** 数据实际目录（自定义 or 默认 ~/MyNote/json） */
 export async function resolveDataDir(): Promise<string> {
   const { dataDir } = await getPaths();
-  return dataDir || resolveBase();
+  if (dataDir) return dataDir;
+  const { join } = await import("@tauri-apps/api/path");
+  return join(await resolveBase(), "json");
 }
 
 /** mynote.json 完整路径 */
@@ -99,10 +103,17 @@ export async function defaultDirs(): Promise<{
       notesDefault: "(浏览器 localStorage)",
     };
   try {
+    const { join } = await import("@tauri-apps/api/path");
     const base = await resolveBase();
-    return { dataDefault: base, notesDefault: base };
+    return {
+      dataDefault: await join(base, "json"),
+      notesDefault: await join(base, "note"),
+    };
   } catch {
-    return { dataDefault: "主文件夹/MyNote", notesDefault: "主文件夹/MyNote" };
+    return {
+      dataDefault: "主文件夹/MyNote/json",
+      notesDefault: "主文件夹/MyNote/note",
+    };
   }
 }
 
