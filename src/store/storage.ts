@@ -84,6 +84,7 @@ export const appStorage: StateStorage = {
     await queue(async () => {
       const obj = await readKV(path);
       obj[name] = value;
+      obj.__app = "mynote"; // 标记为本应用数据文件，便于辨认
       await writeKV(path, obj);
     });
   },

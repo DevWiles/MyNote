@@ -119,7 +119,11 @@ export async function defaultDirs(): Promise<{
 
 // ---------- 数据文件(mynote.json)迁移 ----------
 
-/** 把 fromDir/mynote.json 复制到 toDir（绝对目录，不删旧的） */
+/**
+ * 把 fromDir/mynote.json 复制到 toDir（绝对目录，不删旧的）。
+ * 若目标已存在 mynote.json，则不覆盖——避免误抹掉目标文件夹里已有的数据；
+ * 此时保留目标已有文件，重启后直接用它。返回是否真正写入。
+ */
 export async function migrateDataFile(
   fromDir: string,
   toDir: string,
@@ -131,7 +135,9 @@ export async function migrateDataFile(
   const { join } = await import("@tauri-apps/api/path");
   const src = await join(fromDir, "mynote.json");
   if (!(await exists(src))) return;
+  const dest = await join(toDir, "mynote.json");
+  if (await exists(dest)) return; // 目标已有数据文件，不覆盖
   const content = await readTextFile(src);
   if (!(await exists(toDir))) await mkdir(toDir, { recursive: true });
-  await writeTextFile(await join(toDir, "mynote.json"), content);
+  await writeTextFile(dest, content);
 }
