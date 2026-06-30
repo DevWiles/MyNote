@@ -51,6 +51,18 @@ export default function SettingsView() {
     notesDefault: "",
   });
   const [needRestart, setNeedRestart] = useState(false);
+  const [pathError, setPathError] = useState<string | null>(null);
+
+  // 所选目录里是否已存在该用途的 MyNote 子目录（note / json）
+  const targetExists = async (picked: string, sub: string) => {
+    try {
+      const { exists } = await import("@tauri-apps/plugin-fs");
+      const { join } = await import("@tauri-apps/api/path");
+      return await exists(await join(picked, "MyNote", sub));
+    } catch {
+      return false;
+    }
+  };
 
   useEffect(() => {
     getPaths().then((p) => {
@@ -214,6 +226,7 @@ export default function SettingsView() {
                 {[
                   {
                     key: "notes" as const,
+                    sub: "note",
                     label: "笔记 .md 文件夹",
                     cur: notesDir,
                     def: defaults.notesDefault,
@@ -221,6 +234,7 @@ export default function SettingsView() {
                   },
                   {
                     key: "data" as const,
+                    sub: "json",
                     label: "所有数据文件夹（mynote.json）",
                     cur: dataDir,
                     def: defaults.dataDefault,
@@ -239,7 +253,15 @@ export default function SettingsView() {
                       <button
                         onClick={async () => {
                           const d = await pickDir();
-                          if (d) await row.onPick(d);
+                          if (!d) return;
+                          if (await targetExists(d, row.sub)) {
+                            setPathError(
+                              `「${d}」下已存在 MyNote/${row.sub}，可能含有其它数据。为避免冲突，请换一个目录，或先移走它。`,
+                            );
+                            return;
+                          }
+                          setPathError(null);
+                          await row.onPick(d);
                         }}
                         title="选择文件夹"
                         className="flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-mint-100 px-3 text-xs text-ink-soft transition-colors hover:border-mint-300 hover:text-ink"
@@ -248,7 +270,10 @@ export default function SettingsView() {
                       </button>
                       {row.cur && (
                         <button
-                          onClick={() => row.onPick("")}
+                          onClick={() => {
+                            setPathError(null);
+                            row.onPick("");
+                          }}
                           title="恢复默认"
                           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-mint-100 text-ink-soft transition-colors hover:border-mint-300 hover:text-ink"
                         >
@@ -258,6 +283,11 @@ export default function SettingsView() {
                     </div>
                   </div>
                 ))}
+                {pathError && (
+                  <p className="rounded-xl bg-red-50 px-3 py-2 text-xs text-red-600">
+                    {pathError}
+                  </p>
+                )}
                 {needRestart && (
                   <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-600">
                     数据文件夹已更改并复制，请重启应用使其生效。
