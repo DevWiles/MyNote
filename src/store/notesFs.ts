@@ -15,9 +15,13 @@ const LS_KEY = "mynote-notes";
 
 // ---------- frontmatter 序列化 / 解析 ----------
 
+/** 本应用标记，写进 frontmatter，加载时据此辨认「自己的」笔记 */
+const APP_TAG = "mynote";
+
 function serialize(note: Note): string {
   const fm = [
     "---",
+    `app: ${JSON.stringify(APP_TAG)}`,
     `id: ${JSON.stringify(note.id)}`,
     `title: ${JSON.stringify(note.title)}`,
     `tags: ${JSON.stringify(note.tags ?? [])}`,
@@ -29,25 +33,33 @@ function serialize(note: Note): string {
   return fm + note.body;
 }
 
-/** 容错解析：无 frontmatter 的 .md 也能当作正文读入 */
-function parse(content: string, fallbackId: string): Note {
-  const now = new Date(0).toISOString();
-  const base: Note = {
+/**
+ * 解析 .md，并判断是否为「本应用的笔记」。
+ * recognized=true 仅当带本应用 frontmatter（app:"mynote"，或向后兼容的 id+createdAt+updatedAt）。
+ * 陌生 .md（无 frontmatter / 非本应用）recognized=false，调用方应忽略——
+ * 既不导入，也绝不改写它们。
+ */
+function parse(
+  content: string,
+  fallbackId: string,
+): { note: Note; recognized: boolean } {
+  const epoch = new Date(0).toISOString();
+  const note: Note = {
     id: fallbackId,
     title: "",
     body: content,
     tags: [],
-    createdAt: now,
-    updatedAt: now,
+    createdAt: epoch,
+    updatedAt: epoch,
   };
-  if (!content.startsWith("---")) return base;
+  if (!content.startsWith("---")) return { note, recognized: false };
   const end = content.indexOf("\n---", 3);
-  if (end === -1) return base;
+  if (end === -1) return { note, recognized: false };
   const head = content.slice(3, end).trim();
-  // 正文：跳过结尾的 ---\n
   const after = content.slice(end + 4);
-  const body = after.startsWith("\n") ? after.slice(1) : after;
-  const note: Note = { ...base, body };
+  note.body = after.startsWith("\n") ? after.slice(1) : after;
+  const seen = new Set<string>();
+  let appOk = false;
   for (const line of head.split("\n")) {
     const idx = line.indexOf(":");
     if (idx === -1) continue;
@@ -59,16 +71,20 @@ function parse(content: string, fallbackId: string): Note {
     } catch {
       /* 原样保留字符串 */
     }
-    if (key === "id" && typeof val === "string" && val) note.id = val;
+    seen.add(key);
+    if (key === "app" && val === APP_TAG) appOk = true;
+    else if (key === "id" && typeof val === "string" && val) note.id = val;
     else if (key === "title" && typeof val === "string") note.title = val;
-    else if (key === "tags" && Array.isArray(val))
-      note.tags = val.map(String);
+    else if (key === "tags" && Array.isArray(val)) note.tags = val.map(String);
     else if (key === "createdAt" && typeof val === "string")
       note.createdAt = val;
     else if (key === "updatedAt" && typeof val === "string")
       note.updatedAt = val;
   }
-  return note;
+  const recognized =
+    appOk ||
+    (seen.has("id") && seen.has("createdAt") && seen.has("updatedAt"));
+  return { note, recognized };
 }
 
 // ---------- Tauri fs 懒加载 ----------
@@ -122,12 +138,14 @@ export async function loadNotes(): Promise<Note[]> {
     const mdFiles = entries.filter(
       (e) => e.isFile && e.name.toLowerCase().endsWith(".md"),
     );
-    notes = await Promise.all(
+    const parsed = await Promise.all(
       mdFiles.map(async (e) => {
         const content = await readTextFile(l.file(e.name));
         return parse(content, e.name.replace(/\.md$/i, ""));
       }),
     );
+    // 只认本应用的笔记，忽略文件夹里陌生的 .md（避免误导入/误改写）
+    notes = parsed.filter((p) => p.recognized).map((p) => p.note);
   }
   return notes.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
