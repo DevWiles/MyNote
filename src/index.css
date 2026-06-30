@@ -127,6 +127,93 @@ body {
   background: none;
   padding: 0;
 }
+/* 代码高亮（highlight.js token），浅色配色，贴合清新主题 */
+.md-body .hljs-comment,
+.md-body .hljs-quote {
+  color: #8a9b8f;
+  font-style: italic;
+}
+.md-body .hljs-keyword,
+.md-body .hljs-selector-tag,
+.md-body .hljs-built_in,
+.md-body .hljs-name {
+  color: #2f8f6b;
+}
+.md-body .hljs-string,
+.md-body .hljs-attr,
+.md-body .hljs-template-variable,
+.md-body .hljs-addition {
+  color: #c2410c;
+}
+.md-body .hljs-number,
+.md-body .hljs-literal,
+.md-body .hljs-symbol,
+.md-body .hljs-bullet {
+  color: #b45309;
+}
+.md-body .hljs-title,
+.md-body .hljs-function .hljs-title,
+.md-body .hljs-section {
+  color: #2563eb;
+}
+.md-body .hljs-attribute,
+.md-body .hljs-variable,
+.md-body .hljs-type,
+.md-body .hljs-class .hljs-title {
+  color: #7c3aed;
+}
+.md-body .hljs-meta,
+.md-body .hljs-deletion {
+  color: #9ca3af;
+}
+.md-body .hljs-emphasis {
+  font-style: italic;
+}
+.md-body .hljs-strong {
+  font-weight: 600;
+}
+
+/* 暗色模式：代码块底色 + token 配色 */
+html.dark .md-body pre {
+  background: #20242b;
+}
+html.dark .md-body .hljs-comment,
+html.dark .md-body .hljs-quote {
+  color: #7d8b80;
+}
+html.dark .md-body .hljs-keyword,
+html.dark .md-body .hljs-selector-tag,
+html.dark .md-body .hljs-built_in,
+html.dark .md-body .hljs-name {
+  color: #6fcf97;
+}
+html.dark .md-body .hljs-string,
+html.dark .md-body .hljs-attr,
+html.dark .md-body .hljs-template-variable,
+html.dark .md-body .hljs-addition {
+  color: #f0a868;
+}
+html.dark .md-body .hljs-number,
+html.dark .md-body .hljs-literal,
+html.dark .md-body .hljs-symbol,
+html.dark .md-body .hljs-bullet {
+  color: #e8b974;
+}
+html.dark .md-body .hljs-title,
+html.dark .md-body .hljs-function .hljs-title,
+html.dark .md-body .hljs-section {
+  color: #7aa2f7;
+}
+html.dark .md-body .hljs-attribute,
+html.dark .md-body .hljs-variable,
+html.dark .md-body .hljs-type,
+html.dark .md-body .hljs-class .hljs-title {
+  color: #bb9af7;
+}
+html.dark .md-body .hljs-meta,
+html.dark .md-body .hljs-deletion {
+  color: #9aa5b1;
+}
 .md-body blockquote {
   border-left: 3px solid var(--color-mint-200);
   padding-left: 0.9em;

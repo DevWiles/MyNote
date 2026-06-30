@@ -1,5 +1,6 @@
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeHighlight from "rehype-highlight";
 
 /**
  * 渲染 Markdown。为各级标题按文档顺序注入锚点 id（md-h-0、md-h-1…），
@@ -34,7 +35,11 @@ export default function Markdown({ children }: { children: string }) {
 
   return (
     <div className="md-body">
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[[rehypeHighlight, { detect: true, ignoreMissing: true }]]}
+        components={components}
+      >
         {children}
       </ReactMarkdown>
     </div>
