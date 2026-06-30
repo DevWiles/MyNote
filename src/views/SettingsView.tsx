@@ -194,7 +194,7 @@ export default function SettingsView() {
           <section>
             <h2 className="mb-1 text-sm font-semibold text-ink">存储位置</h2>
             <p className="mb-4 text-xs text-ink-soft">
-              默认保存在应用数据目录（相对路径）。可自定义文件夹；改动后会把现有内容复制到新位置（不删除旧文件）。
+              笔记与所有数据保存在下面的文件夹。可自定义；改动后会把现有内容复制到新位置（不删除旧文件）。
             </p>
             {!isTauri ? (
               <p className="text-xs text-ink-soft/70">
@@ -225,7 +225,7 @@ export default function SettingsView() {
                     </span>
                     <div className="flex items-center gap-2">
                       <code className="flex-1 truncate rounded-xl border border-mint-100 bg-surface px-3 py-2 text-xs text-ink">
-                        {row.cur || `默认 · ${row.def}`}
+                        {row.cur || row.def}
                       </code>
                       <button
                         onClick={async () => {
