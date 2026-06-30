@@ -8,6 +8,8 @@ import type {
   Report,
   Settings,
   Priority,
+  Subtask,
+  PlanLevel,
 } from "../types";
 
 const now = () => new Date().toISOString();
@@ -31,10 +33,20 @@ export interface AppState {
     dueAt?: string | null;
     priority?: Priority;
     tags?: string[];
+    level?: PlanLevel;
+    parentId?: string | null;
   }) => void;
   updateTask: (id: string, patch: Partial<Task>) => void;
   toggleTask: (id: string) => void;
   deleteTask: (id: string) => void;
+  addSubtask: (taskId: string, title: string) => void;
+  toggleSubtask: (taskId: string, subId: string) => void;
+  updateSubtask: (taskId: string, subId: string, title: string) => void;
+  deleteSubtask: (taskId: string, subId: string) => void;
+  /** 把某条子待办「下放」成 toLevel 层的独立规划，并关联回原任务 */
+  promoteSubtask: (taskId: string, subId: string, toLevel: PlanLevel) => void;
+  /** 撤回：把已下放/越级的子规划收回父规划，变回一条子待办 */
+  recallChild: (childId: string) => void;
 
   // 笔记
   addNote: (input?: { title?: string; body?: string; tags?: string[] }) => string;
@@ -85,6 +97,9 @@ export const useStore = create<AppState>()(
               priority: input.priority ?? "medium",
               done: false,
               tags: input.tags ?? [],
+              subtasks: [],
+              level: input.level ?? "day",
+              parentId: input.parentId ?? null,
               createdAt: now(),
               updatedAt: now(),
               completedAt: null,
@@ -113,6 +128,129 @@ export const useStore = create<AppState>()(
         })),
       deleteTask: (id) =>
         set((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) })),
+
+      addSubtask: (taskId, title) => {
+        const name = title.trim();
+        if (!name) return;
+        const sub: Subtask = { id: uid(), title: name, done: false };
+        set((s) => ({
+          tasks: s.tasks.map((t) =>
+            t.id === taskId
+              ? { ...t, subtasks: [...t.subtasks, sub], updatedAt: now() }
+              : t,
+          ),
+        }));
+      },
+      toggleSubtask: (taskId, subId) =>
+        set((s) => ({
+          tasks: s.tasks.map((t) =>
+            t.id === taskId
+              ? {
+                  ...t,
+                  subtasks: t.subtasks.map((sub) =>
+                    sub.id === subId ? { ...sub, done: !sub.done } : sub,
+                  ),
+                  updatedAt: now(),
+                }
+              : t,
+          ),
+        })),
+      updateSubtask: (taskId, subId, title) => {
+        const name = title.trim();
+        set((s) => ({
+          tasks: s.tasks.map((t) =>
+            t.id === taskId
+              ? {
+                  ...t,
+                  subtasks: t.subtasks.flatMap((sub) =>
+                    sub.id === subId
+                      ? name
+                        ? [{ ...sub, title: name }]
+                        : [] // 清空标题即删除该子待办
+                      : [sub],
+                  ),
+                  updatedAt: now(),
+                }
+              : t,
+          ),
+        }));
+      },
+      deleteSubtask: (taskId, subId) =>
+        set((s) => ({
+          tasks: s.tasks.map((t) =>
+            t.id === taskId
+              ? {
+                  ...t,
+                  subtasks: t.subtasks.filter((sub) => sub.id !== subId),
+                  updatedAt: now(),
+                }
+              : t,
+          ),
+        })),
+      promoteSubtask: (taskId, subId, toLevel) =>
+        set((s) => {
+          const parent = s.tasks.find((t) => t.id === taskId);
+          const sub = parent?.subtasks.find((x) => x.id === subId);
+          if (!parent || !sub) return {};
+          const child: Task = {
+            id: uid(),
+            title: sub.title,
+            note: "",
+            dueAt: null,
+            priority: "medium",
+            done: false,
+            tags: [],
+            subtasks: [],
+            level: toLevel,
+            parentId: taskId,
+            createdAt: now(),
+            updatedAt: now(),
+            completedAt: null,
+          };
+          return {
+            tasks: [
+              child,
+              ...s.tasks.map((t) =>
+                t.id === taskId
+                  ? {
+                      ...t,
+                      subtasks: t.subtasks.filter((x) => x.id !== subId),
+                      updatedAt: now(),
+                    }
+                  : t,
+              ),
+            ],
+          };
+        }),
+      recallChild: (childId) =>
+        set((s) => {
+          const child = s.tasks.find((t) => t.id === childId);
+          if (!child || !child.parentId) return {};
+          const parentId = child.parentId;
+          // child 本身变成父规划的一条子待办，其自带子待办也一并并入
+          const absorbed: Subtask[] = [
+            { id: uid(), title: child.title, done: child.done },
+            ...child.subtasks,
+          ];
+          return {
+            tasks: s.tasks
+              .filter((t) => t.id !== childId)
+              .map((t) => {
+                if (t.id === parentId) {
+                  return {
+                    ...t,
+                    subtasks: [...t.subtasks, ...absorbed],
+                    updatedAt: now(),
+                  };
+                }
+                // child 的下级规划上移，改挂到父规划，避免悬空
+                if (t.parentId === childId) {
+                  return { ...t, parentId, updatedAt: now() };
+                }
+                return t;
+              }),
+          };
+        }),
 
       addNote: (input) => {
         const id = uid();
@@ -178,8 +316,21 @@ export const useStore = create<AppState>()(
     }),
     {
       name: "mynote-data",
-      version: 1,
+      version: 3,
       storage: createJSONStorage(() => appStorage),
+      migrate: (persisted, version) => {
+        const state = persisted as Partial<AppState> | undefined;
+        if (state?.tasks && version < 3) {
+          state.tasks = state.tasks.map((t) => ({
+            ...t,
+            subtasks: Array.isArray(t.subtasks) ? t.subtasks : [],
+            // 旧数据无层级概念，默认归到「日」层；关联默认无
+            level: t.level ?? "day",
+            parentId: t.parentId ?? null,
+          }));
+        }
+        return state as AppState;
+      },
       partialize: (s) => ({
         tasks: s.tasks,
         notes: s.notes,

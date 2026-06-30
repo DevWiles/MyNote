@@ -4,12 +4,42 @@ import {
   isSameDay as _isSameDay,
   isPast,
   parseISO,
+  startOfDay,
+  endOfDay,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+  startOfYear,
+  endOfYear,
 } from "date-fns";
 
 export const isToday = (iso: string) => _isToday(parseISO(iso));
 export const isSameDay = (a: string, b: string) =>
   _isSameDay(parseISO(a), parseISO(b));
 export const isOverdue = (iso: string) => isPast(parseISO(iso));
+
+import type { PlanLevel } from "../types";
+/** 周期 = 规划层级（单一来源） */
+export type Period = PlanLevel;
+
+/** 选定周期相对「今天」的区间 [start, end]（本地时区，周一为周起点） */
+export const periodRange = (period: Period): { start: Date; end: Date } => {
+  const now = new Date();
+  switch (period) {
+    case "day":
+      return { start: startOfDay(now), end: endOfDay(now) };
+    case "week":
+      return {
+        start: startOfWeek(now, { weekStartsOn: 1 }),
+        end: endOfWeek(now, { weekStartsOn: 1 }),
+      };
+    case "month":
+      return { start: startOfMonth(now), end: endOfMonth(now) };
+    case "year":
+      return { start: startOfYear(now), end: endOfYear(now) };
+  }
+};
 
 export const fmtDate = (iso: string) => format(parseISO(iso), "yyyy-MM-dd");
 export const fmtDateTime = (iso: string) =>

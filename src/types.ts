@@ -2,6 +2,15 @@ export type ViewKey = "today" | "notes" | "schedule" | "reports" | "settings";
 
 export type Priority = "high" | "medium" | "low";
 
+/** 规划层级：日/周/月/年 */
+export type PlanLevel = "day" | "week" | "month" | "year";
+
+export interface Subtask {
+  id: string;
+  title: string;
+  done: boolean;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -11,6 +20,12 @@ export interface Task {
   priority: Priority;
   done: boolean;
   tags: string[];
+  /** 子待办（一层） */
+  subtasks: Subtask[];
+  /** 所属规划层级 */
+  level: PlanLevel;
+  /** 关联的上层规划 id（可越级）；无则为 null */
+  parentId: string | null;
   createdAt: string;
   updatedAt: string;
   completedAt: string | null;
