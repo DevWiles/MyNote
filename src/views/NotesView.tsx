@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bold,
   BookSearch,
+  CheckSquare,
   Code,
   Columns2,
   Heading2,
@@ -9,6 +10,7 @@ import {
   Italic,
   Link2,
   List,
+  ListChecks,
   ListOrdered,
   ListTodo,
   ListTree,
@@ -28,11 +30,12 @@ import {
 import type { ComponentType } from "react";
 import { useStore } from "../store/useStore";
 import { fmtDate } from "../lib/date";
-import { EmptyState } from "../components/ui";
+import { Button, EmptyState } from "../components/ui";
+import Modal from "../components/Modal";
 import Markdown from "../components/Markdown";
 
 export default function NotesView() {
-  const { notes, addNote, updateNote, deleteNote } = useStore();
+  const { notes, addNote, updateNote, deleteNote, deleteNotes } = useStore();
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(
     notes[0]?.id ?? null,
@@ -63,6 +66,36 @@ export default function NotesView() {
   }, [notes, query]);
 
   const selected = notes.find((n) => n.id === selectedId) ?? null;
+
+  // 多选 / 批量删除
+  const [selectMode, setSelectMode] = useState(false);
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const exitSelect = () => {
+    setSelectMode(false);
+    setCheckedIds(new Set());
+  };
+  const toggleChecked = (id: string) =>
+    setCheckedIds((s) => {
+      const next = new Set(s);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  const allChecked =
+    filtered.length > 0 && filtered.every((n) => checkedIds.has(n.id));
+  const toggleAll = () =>
+    setCheckedIds(allChecked ? new Set() : new Set(filtered.map((n) => n.id)));
+  const confirmDelete = () => {
+    const ids = [...checkedIds];
+    deleteNotes(ids);
+    if (selectedId && checkedIds.has(selectedId)) {
+      const rest = notes.filter((n) => !checkedIds.has(n.id));
+      setSelectedId(rest[0]?.id ?? null);
+    }
+    setConfirmOpen(false);
+    exitSelect();
+  };
 
   const createNote = () => {
     const id = addNote({ title: "未命名笔记", body: "" });
@@ -135,28 +168,72 @@ export default function NotesView() {
         ) : (
           /* 展开态内容固定 w-64，过渡时由父级 overflow 裁剪显示，不随宽度重排 */
           <div className="flex h-full w-64 shrink-0 flex-col">
-            {/* 页面标题 + 折叠按钮 */}
+            {/* 页面标题 + 多选/折叠按钮 */}
             <div className="flex items-center justify-between px-4 pb-1 pt-4">
               <h1 className="text-xl font-semibold text-ink">笔记</h1>
-              <button
-                onClick={() => setListCollapsed(true)}
-                title="折叠笔记列表"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-ink-soft transition-colors hover:bg-mint-50 hover:text-ink"
-              >
-                <PanelLeft size={18} />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => (selectMode ? exitSelect() : setSelectMode(true))}
+                  title={selectMode ? "退出多选" : "选择笔记"}
+                  className={[
+                    "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-colors",
+                    selectMode
+                      ? "bg-mint-400/20 text-mint-600"
+                      : "text-ink-soft hover:bg-mint-50 hover:text-ink",
+                  ].join(" ")}
+                >
+                  <ListChecks size={18} />
+                </button>
+                <button
+                  onClick={() => {
+                    exitSelect();
+                    setListCollapsed(true);
+                  }}
+                  title="折叠笔记列表"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-ink-soft transition-colors hover:bg-mint-50 hover:text-ink"
+                >
+                  <PanelLeft size={18} />
+                </button>
+              </div>
             </div>
 
-            {/* 新建笔记（标题下方、列表上方），内容左对齐——与折叠态图标对齐，收起不抖 */}
-            <div className="px-3 pt-2">
-              <button
-                onClick={createNote}
-                className="flex w-full items-center justify-start gap-2 whitespace-nowrap rounded-xl bg-mint-400 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-mint-500"
-              >
-                <Plus size={16} />
-                新建笔记
-              </button>
-            </div>
+            {/* 新建笔记 / 多选操作栏 */}
+            {selectMode ? (
+              <div className="flex items-center gap-2 px-3 pt-2">
+                <button
+                  onClick={toggleAll}
+                  className="flex items-center gap-1.5 rounded-lg px-1 py-1 text-sm text-ink-soft transition-colors hover:text-ink"
+                >
+                  {allChecked ? (
+                    <CheckSquare size={16} className="text-mint-500" />
+                  ) : (
+                    <Square size={16} />
+                  )}
+                  全选
+                </button>
+                <span className="ml-auto text-xs text-ink-soft">
+                  已选 {checkedIds.size}
+                </span>
+                <button
+                  onClick={() => checkedIds.size && setConfirmOpen(true)}
+                  disabled={checkedIds.size === 0}
+                  title="删除所选笔记"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-red-500 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            ) : (
+              <div className="px-3 pt-2">
+                <button
+                  onClick={createNote}
+                  className="flex w-full items-center justify-start gap-2 whitespace-nowrap rounded-xl bg-mint-400 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-mint-500"
+                >
+                  <Plus size={16} />
+                  新建笔记
+                </button>
+              </div>
+            )}
 
             {/* 搜索 */}
             <div className="px-3 pb-2 pt-3">
@@ -178,26 +255,48 @@ export default function NotesView() {
                   {notes.length === 0 ? "还没有笔记" : "没有匹配的笔记"}
                 </p>
               ) : (
-                filtered.map((n) => (
-                  <button
-                    key={n.id}
-                    onClick={() => setSelectedId(n.id)}
-                    className={[
-                      "mb-1 w-full rounded-xl px-3 py-2.5 text-left transition-colors",
-                      n.id === selectedId ? "bg-mint-50" : "hover:bg-mint-50/50",
-                    ].join(" ")}
-                  >
-                    <p className="truncate text-sm font-medium text-ink">
-                      {n.title || "未命名笔记"}
-                    </p>
-                    <p className="mt-0.5 truncate text-xs text-ink-soft">
-                      {n.body.replace(/[#*`\->]/g, "").trim() || "空笔记"}
-                    </p>
-                    <p className="mt-1 text-[11px] text-ink-soft/60">
-                      {fmtDate(n.updatedAt)}
-                    </p>
-                  </button>
-                ))
+                filtered.map((n) => {
+                  const checked = checkedIds.has(n.id);
+                  const highlighted = selectMode
+                    ? checked
+                    : n.id === selectedId;
+                  return (
+                    <button
+                      key={n.id}
+                      onClick={() =>
+                        selectMode ? toggleChecked(n.id) : setSelectedId(n.id)
+                      }
+                      className={[
+                        "mb-1 flex w-full items-start gap-2 rounded-xl px-3 py-2.5 text-left transition-colors",
+                        highlighted ? "bg-mint-50" : "hover:bg-mint-50/50",
+                      ].join(" ")}
+                    >
+                      {selectMode &&
+                        (checked ? (
+                          <CheckSquare
+                            size={16}
+                            className="mt-0.5 shrink-0 text-mint-500"
+                          />
+                        ) : (
+                          <Square
+                            size={16}
+                            className="mt-0.5 shrink-0 text-ink-soft/50"
+                          />
+                        ))}
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium text-ink">
+                          {n.title || "未命名笔记"}
+                        </span>
+                        <span className="mt-0.5 block truncate text-xs text-ink-soft">
+                          {n.body.replace(/[#*`\->]/g, "").trim() || "空笔记"}
+                        </span>
+                        <span className="mt-1 block text-[11px] text-ink-soft/60">
+                          {fmtDate(n.updatedAt)}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })
               )}
             </div>
           </div>
@@ -222,6 +321,27 @@ export default function NotesView() {
           <EmptyState icon={NotebookPen} text="选择左侧笔记，或新建一篇。" />
         </div>
       )}
+
+      {/* 批量删除确认 */}
+      <Modal
+        open={confirmOpen}
+        title="删除笔记"
+        onClose={() => setConfirmOpen(false)}
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setConfirmOpen(false)}>
+              取消
+            </Button>
+            <Button variant="danger" onClick={confirmDelete}>
+              删除 {checkedIds.size} 篇
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-ink">
+          确定删除选中的 {checkedIds.size} 篇笔记吗？此操作无法撤销。
+        </p>
+      </Modal>
     </div>
   );
 }

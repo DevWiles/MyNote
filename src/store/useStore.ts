@@ -54,6 +54,8 @@ export interface AppState {
   addNote: (input?: { title?: string; body?: string; tags?: string[] }) => string;
   updateNote: (id: string, patch: Partial<Note>) => void;
   deleteNote: (id: string) => void;
+  /** 批量删除笔记 */
+  deleteNotes: (ids: string[]) => void;
 
   // 日程
   addEvent: (input: {
@@ -316,6 +318,10 @@ export const useStore = create<AppState>()(
         })),
       deleteNote: (id) =>
         set((s) => ({ notes: s.notes.filter((n) => n.id !== id) })),
+      deleteNotes: (ids) => {
+        const rm = new Set(ids);
+        set((s) => ({ notes: s.notes.filter((n) => !rm.has(n.id)) }));
+      },
 
       addEvent: (input) =>
         set((s) => ({
