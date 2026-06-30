@@ -185,7 +185,14 @@ export default function NotesView() {
           <div className="flex h-full w-64 shrink-0 flex-col">
             {/* 页面标题 + 多选/折叠按钮 */}
             <div className="flex items-center justify-between px-4 pb-1 pt-4">
-              <h1 className="text-xl font-semibold text-ink">笔记</h1>
+              <div className="flex items-center gap-2">
+                <NotebookPen
+                  size={20}
+                  className="text-mint-500"
+                  strokeWidth={2.2}
+                />
+                <h1 className="text-xl font-semibold text-ink">笔记</h1>
+              </div>
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => (selectMode ? exitSelect() : setSelectMode(true))}
