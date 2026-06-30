@@ -114,18 +114,37 @@ export const useStore = create<AppState>()(
           ),
         })),
       toggleTask: (id) =>
-        set((s) => ({
-          tasks: s.tasks.map((t) =>
-            t.id === id
-              ? {
-                  ...t,
-                  done: !t.done,
-                  completedAt: !t.done ? now() : null,
-                  updatedAt: now(),
-                }
-              : t,
-          ),
-        })),
+        set((s) => {
+          const target = s.tasks.find((t) => t.id === id);
+          if (!target) return {};
+          const done = !target.done;
+          // 收集自身 + 所有下放/越级出去的后代规划，连同它们的子待办一起同步
+          const affected = new Set<string>([id]);
+          let grew = true;
+          while (grew) {
+            grew = false;
+            for (const t of s.tasks) {
+              if (t.parentId && affected.has(t.parentId) && !affected.has(t.id)) {
+                affected.add(t.id);
+                grew = true;
+              }
+            }
+          }
+          const ts = now();
+          return {
+            tasks: s.tasks.map((t) =>
+              affected.has(t.id)
+                ? {
+                    ...t,
+                    done,
+                    completedAt: done ? (t.done ? t.completedAt : ts) : null,
+                    subtasks: t.subtasks.map((sub) => ({ ...sub, done })),
+                    updatedAt: ts,
+                  }
+                : t,
+            ),
+          };
+        }),
       deleteTask: (id) =>
         set((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) })),
 
