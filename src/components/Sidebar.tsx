@@ -34,8 +34,8 @@ export default function Sidebar({ active, onSelect }: Props) {
   return (
     <aside
       className={[
-        "flex shrink-0 flex-col overflow-hidden rounded-2xl bg-mint-50 shadow-[0_8px_28px_-6px_rgba(0,0,0,0.22)] ring-1 ring-black/[0.05] transition-[width] duration-200",
-        collapsed ? "w-20" : "w-60",
+        "flex shrink-0 flex-col overflow-hidden rounded-2xl bg-mint-50 shadow-[0_8px_28px_-6px_rgba(0,0,0,0.22)] ring-1 ring-black/[0.05]",
+        collapsed ? "w-[68px]" : "w-60",
       ].join(" ")}
     >
       {/* 顶部留白：给 macOS 红绿灯按钮腾位置，同时作为窗口拖拽区 */}
@@ -44,7 +44,10 @@ export default function Sidebar({ active, onSelect }: Props) {
       {/* 品牌区（可拖拽窗口）：展开时 logo + 名称 + 收起按钮；收起时 logo 即展开按钮 */}
       <div
         data-tauri-drag-region
-        className="flex items-center gap-3 px-5 pb-3 pt-1"
+        className={[
+          "flex items-center pb-3 pt-1",
+          collapsed ? "justify-center px-0" : "gap-3 px-4",
+        ].join(" ")}
       >
         {collapsed ? (
           <button
@@ -84,7 +87,12 @@ export default function Sidebar({ active, onSelect }: Props) {
       </div>
 
       {/* 导航：灰色极简线性图标 */}
-      <nav className="flex flex-1 flex-col gap-1 px-3 pt-2">
+      <nav
+        className={[
+          "flex flex-1 flex-col gap-1 pt-2",
+          collapsed ? "items-center px-0" : "px-3",
+        ].join(" ")}
+      >
         {NAV_ITEMS.map(({ key, label, icon: Icon }) => {
           const isActive = key === active;
           return (
@@ -93,9 +101,10 @@ export default function Sidebar({ active, onSelect }: Props) {
               onClick={() => onSelect(key)}
               title={collapsed ? label : undefined}
               className={[
-                "flex h-11 items-center gap-3 whitespace-nowrap rounded-xl px-3 text-[15px] font-medium transition-colors",
+                "flex h-11 items-center whitespace-nowrap rounded-xl text-[15px] font-medium transition-colors",
+                collapsed ? "w-11 justify-center" : "w-full gap-3 px-3",
                 isActive
-                  ? "bg-mint-400 text-white shadow-sm"
+                  ? "bg-mint-400/20 text-mint-600"
                   : "text-ink-soft hover:bg-surface/60 hover:text-ink",
               ].join(" ")}
             >
