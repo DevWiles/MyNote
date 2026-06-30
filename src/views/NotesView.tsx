@@ -232,7 +232,7 @@ export default function NotesView() {
                   onClick={exportChecked}
                   disabled={checkedIds.size === 0}
                   title="导出所选为 .md"
-                  className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-mint-50 hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-mint-400/20 hover:text-mint-600 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <Download size={16} />
                 </button>
@@ -240,7 +240,7 @@ export default function NotesView() {
                   onClick={() => checkedIds.size && setConfirmOpen(true)}
                   disabled={checkedIds.size === 0}
                   title="删除所选笔记"
-                  className="flex h-9 w-9 items-center justify-center rounded-lg text-red-500 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-red-400/20 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <Trash2 size={16} />
                 </button>
@@ -681,14 +681,14 @@ function Editor({
         />
         <button
           onClick={onExport}
-          className="rounded-lg p-2 text-ink-soft transition-colors hover:bg-mint-50 hover:text-ink"
+          className="rounded-lg p-2 text-ink-soft transition-colors hover:bg-mint-400/20 hover:text-mint-600"
           title="导出为 .md"
         >
           <Download size={17} />
         </button>
         <button
           onClick={onDelete}
-          className="rounded-lg p-2 text-ink-soft transition-colors hover:bg-red-50 hover:text-red-500"
+          className="rounded-lg p-2 text-ink-soft transition-colors hover:bg-red-400/20 hover:text-red-600"
           title="删除笔记"
         >
           <Trash2 size={17} />
