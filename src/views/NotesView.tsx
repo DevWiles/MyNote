@@ -349,7 +349,7 @@ function Editor({
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       {/* 视图切换：双页（边写边预览）/ 单页（写↔预览），居中 */}
-      <div className="relative flex items-center justify-center gap-2 border-b border-mint-100 px-6 py-2">
+      <div className="relative flex shrink-0 items-center justify-center gap-2 border-b border-mint-100 px-6 py-2">
         <div className="flex items-center gap-0.5 rounded-xl bg-mint-50 p-0.5">
           <button
             onClick={() => setViewMode("split")}
@@ -386,7 +386,10 @@ function Editor({
 
       {/* Markdown 快捷工具栏（格式按钮居中；单页态右侧放预览/编辑切换） */}
       {(viewMode === "split" || viewMode === "single") && (
-        <div className="relative flex items-center justify-center gap-0.5 border-b border-mint-100 px-4 py-1.5">
+        <div className="flex shrink-0 items-center gap-2 border-b border-mint-100 px-4 py-1.5">
+          {/* 左侧撑开，保证中间格式按钮真正居中 */}
+          <div className="flex-1" />
+
           {/* 格式按钮仅在书写区可见时显示 */}
           {(viewMode === "split" || singlePane === "write") && (
             <div className="flex items-center gap-0.5 overflow-x-auto">
@@ -407,33 +410,29 @@ function Editor({
             </div>
           )}
 
-          {/* 单页态：预览 / 编辑 切换，靠右 */}
-          {viewMode === "single" && (
-            <button
-              onClick={() =>
-                setSinglePane((p) => (p === "write" ? "preview" : "write"))
-              }
-              className="absolute right-4 flex items-center gap-1.5 rounded-lg border border-mint-100 px-2.5 py-1 text-xs text-ink-soft transition-colors hover:border-mint-300 hover:text-ink"
-              title={singlePane === "write" ? "预览编译结果" : "返回编辑"}
-            >
-              {singlePane === "write" ? (
-                <>
-                  <BookSearch size={14} />
-                  预览
-                </>
-              ) : (
-                <>
-                  <Pencil size={14} />
-                  编辑
-                </>
-              )}
-            </button>
-          )}
+          {/* 右侧：单页态放预览/编辑切换（仅图标） */}
+          <div className="flex flex-1 justify-end">
+            {viewMode === "single" && (
+              <button
+                onClick={() =>
+                  setSinglePane((p) => (p === "write" ? "preview" : "write"))
+                }
+                className="flex items-center justify-center rounded-lg border border-mint-100 p-1.5 text-ink-soft transition-colors hover:border-mint-300 hover:text-ink"
+                title={singlePane === "write" ? "预览" : "编辑"}
+              >
+                {singlePane === "write" ? (
+                  <BookSearch size={16} />
+                ) : (
+                  <Pencil size={16} />
+                )}
+              </button>
+            )}
+          </div>
         </div>
       )}
 
       {/* 标题栏 */}
-      <div className="flex items-center gap-3 border-b border-mint-100 px-6 py-3">
+      <div className="flex shrink-0 items-center gap-3 border-b border-mint-100 px-6 py-3">
         <input
           ref={titleRef}
           value={note.title}
@@ -451,7 +450,7 @@ function Editor({
       </div>
 
       {/* 内容区：编辑面板 + 大纲 */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
         {/* 编辑面板：双页并排 / 单页（写或预览） */}
         <div className="flex flex-1 overflow-hidden">
           {(viewMode === "split" || singlePane === "write") && (
