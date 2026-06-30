@@ -1,15 +1,30 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Bold,
+  Code,
   Columns2,
   Eye,
+  Heading2,
+  Image as ImageIcon,
+  Italic,
+  Link2,
+  List,
+  ListOrdered,
+  ListTodo,
   ListTree,
+  Minus,
   NotebookPen,
   Pencil,
   Plus,
   Search,
   Square,
+  SquareCode,
+  Strikethrough,
+  Table,
+  TextQuote,
   Trash2,
 } from "lucide-react";
+import type { ComponentType } from "react";
 import { useStore } from "../store/useStore";
 import { fmtDate } from "../lib/date";
 import { EmptyState } from "../components/ui";
@@ -180,6 +195,8 @@ function Editor({
   const titleRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
+  /** 工具栏插入后待恢复的选区，body 提交后由 effect 应用 */
+  const pendingSel = useRef<[number, number] | null>(null);
 
   // 新建笔记时，光标落在标题处并选中默认标题，便于直接覆盖输入
   useEffect(() => {
@@ -189,6 +206,111 @@ function Editor({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 工具栏插入文本后，正文更新完毕再恢复光标/选区
+  useEffect(() => {
+    if (pendingSel.current && textareaRef.current) {
+      const [s, e] = pendingSel.current;
+      pendingSel.current = null;
+      const ta = textareaRef.current;
+      ta.focus();
+      ta.setSelectionRange(s, e);
+    }
+  }, [note.body]);
+
+  /** 基于当前选区改写正文，并记录新选区 */
+  const edit = (
+    fn: (s: { value: string; start: number; end: number }) => {
+      value: string;
+      start: number;
+      end: number;
+    },
+  ) => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const r = fn({
+      value: note.body,
+      start: ta.selectionStart,
+      end: ta.selectionEnd,
+    });
+    pendingSel.current = [r.start, r.end];
+    onChange({ body: r.value });
+  };
+
+  /** 用 before/after 包裹选区；无选区则插入占位符并选中 */
+  const wrap = (before: string, after: string, placeholder: string) =>
+    edit(({ value, start, end }) => {
+      const sel = value.slice(start, end) || placeholder;
+      const value2 =
+        value.slice(0, start) + before + sel + after + value.slice(end);
+      const s = start + before.length;
+      return { value: value2, start: s, end: s + sel.length };
+    });
+
+  /** 给选区涉及的每一行加前缀（列表 / 待办 / 引用 / 标题） */
+  const linePrefix = (make: (i: number) => string) =>
+    edit(({ value, start, end }) => {
+      const lineStart = value.lastIndexOf("\n", start - 1) + 1;
+      let lineEnd = value.indexOf("\n", end);
+      if (lineEnd === -1) lineEnd = value.length;
+      const block = value.slice(lineStart, lineEnd);
+      const newBlock = block
+        .split("\n")
+        .map((ln, i) => make(i) + ln)
+        .join("\n");
+      const value2 = value.slice(0, lineStart) + newBlock + value.slice(lineEnd);
+      return { value: value2, start: lineStart, end: lineStart + newBlock.length };
+    });
+
+  /** 在光标处另起一块插入片段，返回光标落点（相对片段末尾的偏移） */
+  const insertBlock = (snippet: string, caretBack = 0) =>
+    edit(({ value, start }) => {
+      const atLineStart = start === 0 || value[start - 1] === "\n";
+      const text = (atLineStart ? "" : "\n") + snippet;
+      const value2 = value.slice(0, start) + text + value.slice(start);
+      const pos = start + text.length - caretBack;
+      return { value: value2, start: pos, end: pos };
+    });
+
+  const TABLE_SNIPPET =
+    "| 列1 | 列2 | 列3 |\n| --- | --- | --- |\n|  |  |  |\n";
+
+  type Tool = { icon: ComponentType<{ size?: number }>; title: string; run: () => void };
+  const tools: (Tool | "divider")[] = [
+    { icon: Heading2, title: "标题", run: () => linePrefix(() => "## ") },
+    { icon: Bold, title: "加粗", run: () => wrap("**", "**", "粗体") },
+    { icon: Italic, title: "斜体", run: () => wrap("*", "*", "斜体") },
+    {
+      icon: Strikethrough,
+      title: "删除线",
+      run: () => wrap("~~", "~~", "删除线"),
+    },
+    "divider",
+    { icon: Code, title: "行内代码", run: () => wrap("`", "`", "代码") },
+    {
+      icon: SquareCode,
+      title: "代码块",
+      run: () => insertBlock("```\n\n```\n", 5),
+    },
+    { icon: TextQuote, title: "引用", run: () => linePrefix(() => "> ") },
+    "divider",
+    { icon: List, title: "无序列表", run: () => linePrefix(() => "- ") },
+    {
+      icon: ListOrdered,
+      title: "有序列表",
+      run: () => linePrefix((i) => `${i + 1}. `),
+    },
+    { icon: ListTodo, title: "待办清单", run: () => linePrefix(() => "- [ ] ") },
+    "divider",
+    { icon: Link2, title: "链接", run: () => wrap("[", "](url)", "链接文字") },
+    {
+      icon: ImageIcon,
+      title: "图片",
+      run: () => wrap("![", "](url)", "图片描述"),
+    },
+    { icon: Table, title: "表格", run: () => insertBlock(TABLE_SNIPPET) },
+    { icon: Minus, title: "分割线", run: () => insertBlock("---\n") },
+  ];
 
   const headings = useMemo(() => parseHeadings(note.body), [note.body]);
 
@@ -301,6 +423,26 @@ function Editor({
           <Trash2 size={17} />
         </button>
       </div>
+
+      {/* Markdown 快捷工具栏（仅书写区可见时显示） */}
+      {(viewMode === "split" || singlePane === "write") && (
+        <div className="flex items-center gap-0.5 overflow-x-auto border-b border-mint-100 px-4 py-1.5">
+          {tools.map((t, i) =>
+            t === "divider" ? (
+              <span key={i} className="mx-1 h-4 w-px shrink-0 bg-mint-100" />
+            ) : (
+              <button
+                key={i}
+                onClick={t.run}
+                title={t.title}
+                className="flex shrink-0 items-center justify-center rounded-lg p-1.5 text-ink-soft transition-colors hover:bg-mint-50 hover:text-ink"
+              >
+                <t.icon size={16} />
+              </button>
+            ),
+          )}
+        </div>
+      )}
 
       {/* 内容区：编辑面板 + 大纲 */}
       <div className="flex flex-1 overflow-hidden">
