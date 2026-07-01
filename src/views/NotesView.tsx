@@ -555,7 +555,8 @@ function Editor({
       let blockEnd = value.indexOf("\n", selEnd);
       if (blockEnd === -1) blockEnd = value.length;
       const lines = value.slice(blockStart, blockEnd).split("\n");
-      const UNIT = "  ";
+      // 一级 4 空格：能对齐到有序列表 `1. `(3 列宽)之下，单个 Tab 即可嵌套
+      const UNIT = "    ";
       let newBlock: string;
       let ds: number;
       let dTotal: number;
@@ -563,7 +564,7 @@ function Editor({
         let first = 0;
         let total = 0;
         const out = lines.map((ln, i) => {
-          const r = /^ {1,2}/.exec(ln)?.[0].length ?? 0;
+          const r = /^ {1,4}/.exec(ln)?.[0].length ?? 0;
           if (i === 0) first = r;
           total += r;
           return ln.slice(r);
