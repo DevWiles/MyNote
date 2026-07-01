@@ -32,6 +32,14 @@ pub fn run() {
                 )
                 .expect("failed to apply window vibrancy (macOS only)");
             }
+            // Windows：去掉原生标题栏，用前端自绘标题栏（更整洁）
+            #[cfg(target_os = "windows")]
+            {
+                use tauri::Manager;
+                if let Some(window) = _app.get_webview_window("main") {
+                    let _ = window.set_decorations(false);
+                }
+            }
             Ok(())
         })
         .run(tauri::generate_context!())

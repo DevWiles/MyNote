@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { Minus, Square, X } from "lucide-react";
 import Sidebar from "./components/Sidebar";
 import TodoView from "./views/TodoView";
 import NotesView from "./views/NotesView";
@@ -18,6 +19,40 @@ const VIEWS: Record<ViewKey, React.ReactNode> = {
   reports: <ReportsView />,
   settings: <SettingsView />,
 };
+
+const isWin =
+  typeof navigator !== "undefined" && navigator.userAgent.includes("Windows");
+
+/** Windows 自绘标题栏：顶部可拖动条 + 最小化/最大化/关闭 */
+function WinTitleBar() {
+  const win = getCurrentWindow();
+  const btn =
+    "flex h-8 w-11 items-center justify-center text-ink-soft transition-colors hover:bg-mint-100 hover:text-ink";
+  return (
+    <div
+      data-tauri-drag-region
+      className="flex h-8 shrink-0 items-center justify-end bg-paper"
+    >
+      <button className={btn} title="最小化" onClick={() => win.minimize()}>
+        <Minus size={15} />
+      </button>
+      <button
+        className={btn}
+        title="最大化"
+        onClick={() => win.toggleMaximize()}
+      >
+        <Square size={12} />
+      </button>
+      <button
+        className={`${btn} hover:!bg-red-500 hover:!text-white`}
+        title="关闭"
+        onClick={() => win.close()}
+      >
+        <X size={16} />
+      </button>
+    </div>
+  );
+}
 
 export default function App() {
   const [active, setActive] = useState<ViewKey>("today");
@@ -80,12 +115,15 @@ export default function App() {
   return (
     <div
       data-tauri-drag-region
-      className="flex h-screen w-screen gap-1 overflow-hidden rounded-[14px] bg-white/[0.06] p-1 text-ink shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18)]"
+      className="app-shell flex h-screen w-screen flex-col overflow-hidden rounded-[14px] bg-white/[0.06] p-1 text-ink shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18)]"
     >
-      <Sidebar active={active} onSelect={setActive} />
-      <main className="flex-1 overflow-hidden rounded-2xl bg-paper shadow-[0_8px_28px_-6px_rgba(0,0,0,0.22)] ring-1 ring-black/[0.05]">
-        {VIEWS[active]}
-      </main>
+      {isWin && <WinTitleBar />}
+      <div className="flex flex-1 gap-1 overflow-hidden">
+        <Sidebar active={active} onSelect={setActive} />
+        <main className="flex-1 overflow-hidden rounded-2xl bg-paper shadow-[0_8px_28px_-6px_rgba(0,0,0,0.22)] ring-1 ring-black/[0.05]">
+          {VIEWS[active]}
+        </main>
+      </div>
     </div>
   );
 }

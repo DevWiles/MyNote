@@ -38,8 +38,8 @@ export default function Sidebar({ active, onSelect }: Props) {
         collapsed ? "w-[68px]" : "w-60",
       ].join(" ")}
     >
-      {/* 顶部留白：给 macOS 红绿灯按钮腾位置，同时作为窗口拖拽区 */}
-      <div data-tauri-drag-region className="h-8 shrink-0" />
+      {/* 顶部留白：给 macOS 红绿灯按钮腾位置，同时作为窗口拖拽区（Windows 隐藏） */}
+      <div data-tauri-drag-region className="mac-traffic-spacer h-8 shrink-0" />
 
       {/* 品牌区（可拖拽窗口）：展开时 logo + 名称 + 收起按钮；收起时 logo 即展开按钮 */}
       <div
