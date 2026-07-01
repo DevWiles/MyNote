@@ -31,7 +31,7 @@ function WinTitleBar() {
   return (
     <div
       data-tauri-drag-region
-      className="flex h-8 shrink-0 items-center justify-end bg-paper"
+      className="flex h-8 shrink-0 items-center justify-end"
     >
       <button className={btn} title="最小化" onClick={() => win.minimize()}>
         <Minus size={15} />

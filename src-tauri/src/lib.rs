@@ -32,12 +32,16 @@ pub fn run() {
                 )
                 .expect("failed to apply window vibrancy (macOS only)");
             }
-            // Windows：去掉原生标题栏，用前端自绘标题栏（更整洁）
+            // Windows：去原生标题栏 + 毛玻璃（Win11 Mica，退回 Win10 Acrylic）
             #[cfg(target_os = "windows")]
             {
                 use tauri::Manager;
+                use window_vibrancy::{apply_acrylic, apply_mica};
                 if let Some(window) = _app.get_webview_window("main") {
                     let _ = window.set_decorations(false);
+                    if apply_mica(&window, None).is_err() {
+                        let _ = apply_acrylic(&window, Some((248, 250, 248, 190)));
+                    }
                 }
             }
             Ok(())

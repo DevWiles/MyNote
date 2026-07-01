@@ -51,16 +51,7 @@ body,
   height: 100%;
 }
 
-/* Windows：无 vibrancy，用不透明实底，避免透明露出桌面；去掉毛玻璃圆角描边 */
-html.win body {
-  background-color: var(--color-paper);
-}
-html.win .app-shell {
-  background: var(--color-paper);
-  border-radius: 0;
-  box-shadow: none;
-  padding: 0;
-}
+/* Windows：保持透明，让原生 Mica/Acrylic 毛玻璃透上来（同 macOS 思路） */
 /* Windows 无红绿灯，隐藏侧栏为红绿灯预留的顶部占位 */
 html.win .mac-traffic-spacer {
   display: none;

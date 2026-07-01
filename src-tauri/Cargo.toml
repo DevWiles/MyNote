@@ -26,7 +26,6 @@ tauri-plugin-store = "2.4.3"
 tauri-plugin-http = "2.5.9"
 tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
-
-[target.'cfg(target_os = "macos")'.dependencies]
+# 跨平台毛玻璃：macOS vibrancy / Windows mica、acrylic
 window-vibrancy = "0.6"
 
