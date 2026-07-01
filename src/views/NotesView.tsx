@@ -541,6 +541,53 @@ function Editor({
   const TABLE_SNIPPET =
     "| 列1 | 列2 | 列3 |\n| --- | --- | --- |\n|  |  |  |\n";
 
+  // 回车自动续列表：在列表行按回车，自动补下一项标记；空项回车则退出列表
+  const handleEnter = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return;
+    const ta = textareaRef.current;
+    if (!ta || ta.selectionStart !== ta.selectionEnd) return;
+    const pos = ta.selectionStart;
+    const value = note.body;
+    const lineStart = value.lastIndexOf("\n", pos - 1) + 1;
+    let lineEnd = value.indexOf("\n", pos);
+    if (lineEnd === -1) lineEnd = value.length;
+    const line = value.slice(lineStart, lineEnd);
+
+    const task = /^(\s*)([-*+])[ \t]+\[[ xX]\][ \t]+/.exec(line);
+    const ol = /^(\s*)(\d+)([.)])[ \t]+/.exec(line);
+    const ul = /^(\s*)([-*+])[ \t]+/.exec(line);
+
+    let full: string | null = null;
+    let marker = "";
+    if (task) {
+      full = task[0];
+      marker = `${task[1]}${task[2]} [ ] `;
+    } else if (ol) {
+      full = ol[0];
+      marker = `${ol[1]}${Number(ol[2]) + 1}${ol[3]} `;
+    } else if (ul) {
+      full = ul[0];
+      marker = `${ul[1]}${ul[2]} `;
+    }
+    if (full === null) return; // 非列表行，交给默认换行
+
+    e.preventDefault();
+    const contentEmpty = line.slice(full.length).trim() === "";
+    let value2: string;
+    let caret: number;
+    if (contentEmpty) {
+      // 空列表项：删掉标记，退出列表
+      value2 = value.slice(0, lineStart) + value.slice(lineEnd);
+      caret = lineStart;
+    } else {
+      const insert = "\n" + marker;
+      value2 = value.slice(0, pos) + insert + value.slice(pos);
+      caret = pos + insert.length;
+    }
+    pendingSel.current = [caret, caret];
+    onChange({ body: value2 });
+  };
+
   type Tool = { icon: ComponentType<{ size?: number }>; title: string; run: () => void };
   const tools: (Tool | "divider")[] = [
     { icon: Heading2, title: "标题", run: () => linePrefix(() => "## ") },
@@ -735,6 +782,7 @@ function Editor({
               ref={textareaRef}
               value={note.body}
               onChange={(e) => onChange({ body: e.target.value })}
+              onKeyDown={handleEnter}
               placeholder="在此用 Markdown 书写…"
               spellCheck={false}
               className={[

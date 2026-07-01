@@ -112,8 +112,29 @@ textarea,
 .md-body ol {
   padding-left: 1.4em;
 }
+/* Tailwind 预设会清掉列表样式，这里显式恢复圆点/序号 */
+.md-body ul {
+  list-style-type: disc;
+}
+.md-body ul ul {
+  list-style-type: circle;
+}
+.md-body ol {
+  list-style-type: decimal;
+}
 .md-body li {
   margin: 0.25em 0;
+}
+.md-body li::marker {
+  color: var(--color-ink-soft);
+}
+/* 待办清单项：去掉圆点，留复选框 */
+.md-body li:has(> input[type="checkbox"]) {
+  list-style: none;
+  margin-left: -1.2em;
+}
+.md-body li > input[type="checkbox"] {
+  margin-right: 0.45em;
 }
 .md-body a {
   color: var(--color-mint-600);
