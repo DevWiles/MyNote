@@ -541,8 +541,49 @@ function Editor({
   const TABLE_SNIPPET =
     "| 列1 | 列2 | 列3 |\n| --- | --- | --- |\n|  |  |  |\n";
 
-  // 回车自动续列表：在列表行按回车，自动补下一项标记；空项回车则退出列表
-  const handleEnter = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  // Tab/Shift+Tab 控制缩进；回车在列表行自动续项、空项退出
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Tab / Shift+Tab：对当前行或选中的多行整体缩进 / 反缩进（2 空格一级）
+    if (e.key === "Tab" && !e.nativeEvent.isComposing) {
+      const ta = textareaRef.current;
+      if (!ta) return;
+      e.preventDefault();
+      const value = note.body;
+      const selStart = ta.selectionStart;
+      const selEnd = ta.selectionEnd;
+      const blockStart = value.lastIndexOf("\n", selStart - 1) + 1;
+      let blockEnd = value.indexOf("\n", selEnd);
+      if (blockEnd === -1) blockEnd = value.length;
+      const lines = value.slice(blockStart, blockEnd).split("\n");
+      const UNIT = "  ";
+      let newBlock: string;
+      let ds: number;
+      let dTotal: number;
+      if (e.shiftKey) {
+        let first = 0;
+        let total = 0;
+        const out = lines.map((ln, i) => {
+          const r = /^ {1,2}/.exec(ln)?.[0].length ?? 0;
+          if (i === 0) first = r;
+          total += r;
+          return ln.slice(r);
+        });
+        newBlock = out.join("\n");
+        ds = -first;
+        dTotal = -total;
+      } else {
+        newBlock = lines.map((ln) => UNIT + ln).join("\n");
+        ds = UNIT.length;
+        dTotal = UNIT.length * lines.length;
+      }
+      const value2 =
+        value.slice(0, blockStart) + newBlock + value.slice(blockEnd);
+      const ns = Math.max(blockStart, selStart + ds);
+      const ne = Math.max(ns, selEnd + dTotal);
+      pendingSel.current = [ns, ne];
+      onChange({ body: value2 });
+      return;
+    }
     if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return;
     const ta = textareaRef.current;
     if (!ta || ta.selectionStart !== ta.selectionEnd) return;
@@ -782,7 +823,7 @@ function Editor({
               ref={textareaRef}
               value={note.body}
               onChange={(e) => onChange({ body: e.target.value })}
-              onKeyDown={handleEnter}
+              onKeyDown={handleKeyDown}
               placeholder="在此用 Markdown 书写…"
               spellCheck={false}
               className={[
