@@ -14,6 +14,7 @@ import {
   Undo2,
 } from "lucide-react";
 import { useStore } from "../store/useStore";
+import { dragRegion } from "../lib/platform";
 import type { Task, Priority, PlanLevel } from "../types";
 import { fmtDate, isOverdue, toDateInput, fromDateInput } from "../lib/date";
 import { LEVEL_LABEL, LEVEL_RANK, LEVEL_STYLE } from "../lib/levels";
@@ -91,7 +92,7 @@ export default function TodoView() {
 
   return (
     <div className="relative flex h-full flex-col">
-      <header data-tauri-drag-region className="border-b border-mint-100 px-8 pt-5">
+      <header {...dragRegion} className="border-b border-mint-100 px-8 pt-5">
         <div className="relative mb-4 flex items-center">
           <div className="flex items-center gap-3">
             <CheckSquare size={22} className="text-mint-500" strokeWidth={2.2} />

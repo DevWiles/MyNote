@@ -8,6 +8,7 @@ import {
   PanelLeft,
 } from "lucide-react";
 import type { ViewKey } from "../types";
+import { dragRegion } from "../lib/platform";
 
 type NavItem = {
   key: ViewKey;
@@ -39,11 +40,11 @@ export default function Sidebar({ active, onSelect }: Props) {
       ].join(" ")}
     >
       {/* 顶部留白：给 macOS 红绿灯按钮腾位置，同时作为窗口拖拽区（Windows 隐藏） */}
-      <div data-tauri-drag-region className="mac-traffic-spacer h-8 shrink-0" />
+      <div {...dragRegion} className="mac-traffic-spacer h-8 shrink-0" />
 
-      {/* 品牌区（可拖拽窗口）：展开时 logo + 名称 + 收起按钮；收起时 logo 即展开按钮 */}
+      {/* 品牌区（macOS 可拖拽窗口）：展开时 logo + 名称 + 收起按钮；收起时 logo 即展开按钮 */}
       <div
-        data-tauri-drag-region
+        {...dragRegion}
         className={[
           "flex items-center pb-3 pt-1",
           collapsed ? "justify-center px-0" : "gap-3 px-4",

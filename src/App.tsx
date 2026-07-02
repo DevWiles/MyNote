@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Minus, Square, X } from "lucide-react";
+import { isWindows } from "./lib/platform";
 import Sidebar from "./components/Sidebar";
 import TodoView from "./views/TodoView";
 import NotesView from "./views/NotesView";
@@ -19,9 +20,6 @@ const VIEWS: Record<ViewKey, React.ReactNode> = {
   reports: <ReportsView />,
   settings: <SettingsView />,
 };
-
-const isWin =
-  typeof navigator !== "undefined" && navigator.userAgent.includes("Windows");
 
 /** Windows 自绘标题栏：顶部可拖动条 + 最小化/最大化/关闭 */
 function WinTitleBar() {
@@ -113,11 +111,8 @@ export default function App() {
   }, [theme]);
 
   return (
-    <div
-      data-tauri-drag-region
-      className="app-shell flex h-screen w-screen flex-col overflow-hidden rounded-[14px] bg-white/[0.06] p-1 text-ink shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18)]"
-    >
-      {isWin && <WinTitleBar />}
+    <div className="app-shell flex h-screen w-screen flex-col overflow-hidden rounded-[14px] bg-white/[0.06] p-1 text-ink shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18)]">
+      {isWindows && <WinTitleBar />}
       <div className="flex flex-1 gap-1 overflow-hidden">
         <Sidebar active={active} onSelect={setActive} />
         <main className="flex-1 overflow-hidden rounded-2xl bg-paper shadow-[0_8px_28px_-6px_rgba(0,0,0,0.22)] ring-1 ring-black/[0.05]">

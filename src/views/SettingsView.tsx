@@ -17,6 +17,7 @@ import { relaunch } from "@tauri-apps/plugin-process";
 import { getVersion } from "@tauri-apps/api/app";
 import type { ThemeMode } from "../types";
 import { useStore } from "../store/useStore";
+import { dragRegion } from "../lib/platform";
 import { Button, inputClass } from "../components/ui";
 import {
   getPaths,
@@ -148,7 +149,7 @@ export default function SettingsView() {
 
   return (
     <div className="flex h-full flex-col">
-      <header data-tauri-drag-region className="flex items-center gap-3 border-b border-mint-100 px-8 py-5">
+      <header {...dragRegion} className="flex items-center gap-3 border-b border-mint-100 px-8 py-5">
         <SettingsIcon size={22} className="text-mint-500" strokeWidth={2.2} />
         <h1 className="text-xl font-semibold text-ink">设置</h1>
       </header>

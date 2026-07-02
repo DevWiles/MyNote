@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import type { ComponentType } from "react";
 import { useStore } from "../store/useStore";
+import { dragRegion } from "../lib/platform";
 import { fmtDate } from "../lib/date";
 import { Button, EmptyState } from "../components/ui";
 import Modal from "../components/Modal";
@@ -185,7 +186,7 @@ export default function NotesView() {
           <div className="flex h-full w-64 shrink-0 flex-col">
             {/* 页面标题 + 多选/折叠按钮 */}
             <div
-              data-tauri-drag-region
+              {...dragRegion}
               className="flex items-center justify-between px-4 pb-1 pt-4"
             >
               <div className="flex items-center gap-2">
@@ -705,7 +706,7 @@ function Editor({
     <div className="flex flex-1 flex-col overflow-hidden">
       {/* 视图切换：双页（边写边预览）/ 单页（写↔预览），居中 */}
       <div
-        data-tauri-drag-region
+        {...dragRegion}
         className="relative flex shrink-0 items-center justify-center gap-2 border-b border-mint-100 px-6 py-2"
       >
         <div className="flex items-center gap-0.5 rounded-xl bg-mint-50 p-0.5">

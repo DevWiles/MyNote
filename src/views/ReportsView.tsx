@@ -21,6 +21,7 @@ import {
   startOfWeek,
 } from "date-fns";
 import { useStore } from "../store/useStore";
+import { dragRegion } from "../lib/platform";
 import type { Report, ReportType, Task, PlanLevel } from "../types";
 import { deepseekChat } from "../lib/deepseek";
 import { fmtDate, fmtDateTime } from "../lib/date";
@@ -147,7 +148,7 @@ export default function ReportsView() {
     <div className="flex h-full">
       {/* 左侧：生成 + 历史 */}
       <div className="flex w-64 shrink-0 flex-col border-r border-mint-100">
-        <div data-tauri-drag-region className="flex items-center gap-2 border-b border-mint-100 px-5 py-4">
+        <div {...dragRegion} className="flex items-center gap-2 border-b border-mint-100 px-5 py-4">
           <Sparkles size={20} className="text-mint-500" strokeWidth={2.2} />
           <h1 className="text-lg font-semibold text-ink">报告</h1>
         </div>
