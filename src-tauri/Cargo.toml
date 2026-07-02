@@ -1,6 +1,6 @@
 [package]
 name = "mynote"
-version = "0.2.3"
+version = "0.2.4"
 description = "MyNote - 待办、笔记、日程三合一的小清新桌面应用"
 authors = ["DevWiles"]
 edition = "2021"
