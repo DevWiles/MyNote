@@ -152,33 +152,50 @@ textarea,
 .md-body table {
   margin: 0.6em 0;
 }
+/* 列表：Tailwind 预设清掉了原生标记，这里用自定义计数器/项目符号重建。
+   浏览器原生 outside 标记与内容间距过大且无法用 padding 收紧，故手动实现，
+   把间距精确控制在 ~0.3em，同时保留换行悬挂对齐、两位数序号对齐。 */
 .md-body ul,
 .md-body ol {
-  padding-left: 1.4em;
-}
-/* Tailwind 预设会清掉列表样式，这里显式恢复圆点/序号 */
-.md-body ul {
-  list-style-type: disc;
-}
-.md-body ul ul {
-  list-style-type: circle;
+  list-style: none;
+  padding-left: 0;
 }
 .md-body ol {
-  list-style-type: decimal;
+  counter-reset: item;
 }
 .md-body li {
   margin: 0.25em 0;
+  padding-left: 1.6em; /* 标记占位宽度，兼容两位数序号；换行第二行悬挂到此 */
 }
-.md-body li::marker {
+.md-body ol > li {
+  counter-increment: item;
+}
+.md-body ol > li::before {
+  content: counter(item) ".";
+  display: inline-block;
+  width: 1.6em;
+  margin-left: -1.6em;
   color: var(--color-ink-soft);
-  /* 显式声明，保证 Windows(WebView2/Chromium)与 macOS(WebKit)序号都用等宽数字对齐 */
-  font-family: var(--font-mono);
+  /* 等宽数字：Win(Chromium)/Mac(WebKit) 序号都对齐 */
   font-variant-numeric: tabular-nums;
 }
-/* 待办清单项：去掉圆点，留复选框 */
+.md-body ul > li::before {
+  content: "•";
+  display: inline-block;
+  width: 1.6em;
+  margin-left: -1.6em;
+  color: var(--color-ink-soft);
+}
+/* 嵌套无序列表用空心圆点 */
+.md-body ul ul > li::before {
+  content: "◦";
+}
+/* 待办清单项：不加项目符号，保留复选框并取消标记占位 */
 .md-body li:has(> input[type="checkbox"]) {
-  list-style: none;
-  margin-left: -1.2em;
+  padding-left: 0;
+}
+.md-body li:has(> input[type="checkbox"])::before {
+  content: none;
 }
 .md-body li > input[type="checkbox"] {
   margin-right: 0.45em;
