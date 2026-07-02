@@ -1,5 +1,36 @@
 @import "tailwindcss";
 
+/* ── Maple Mono：开源等宽编程字体（自托管，仅拉丁/数字）───────
+   数字为等宽（tabular），列表序号 1./2. 天然对齐；中文回退 PingFang。 */
+@font-face {
+  font-family: "Maple Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/MapleMono-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Maple Mono";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/MapleMono-Italic.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Maple Mono";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/MapleMono-Bold.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Maple Mono";
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/MapleMono-BoldItalic.woff2") format("woff2");
+}
+
 /* ── MyNote 小清新主题 ───────────────────────────────
    低饱和、留白充足、薄荷绿为主色，温润纸感背景 */
 @theme {
@@ -23,6 +54,10 @@
 
   --font-sans: "PingFang SC", "Microsoft YaHei", system-ui, -apple-system,
     "Segoe UI", sans-serif;
+
+  /* 笔记编辑区/预览：拉丁与数字用 Maple Mono，中文回退 PingFang */
+  --font-mono: "Maple Mono", "PingFang SC", "Microsoft YaHei", ui-monospace,
+    SFMono-Regular, Menlo, monospace;
 }
 
 @layer base {
@@ -81,6 +116,9 @@ textarea,
 
 /* Markdown 预览排版 */
 .md-body {
+  font-family: var(--font-mono);
+  /* 等宽数字：有序列表序号 1./2./10. 等宽对齐，不再错位 */
+  font-variant-numeric: tabular-nums;
   font-size: 14px;
   line-height: 1.75;
   color: var(--color-ink);
@@ -147,7 +185,7 @@ textarea,
   text-decoration: underline;
 }
 .md-body code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: 0.88em;
   background: var(--color-mint-50);
   padding: 0.12em 0.4em;
