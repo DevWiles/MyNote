@@ -586,6 +586,33 @@ function Editor({
       onChange({ body: value2 });
       return;
     }
+    // Backspace：光标停在空列表项的标记后，一次删掉整个标记（序号 / 圆点 / 勾选框），而非逐字删
+    if (e.key === "Backspace" && !e.nativeEvent.isComposing) {
+      const ta = textareaRef.current;
+      if (!ta || ta.selectionStart !== ta.selectionEnd) return; // 有选区交给默认删除
+      const pos = ta.selectionStart;
+      const value = note.body;
+      const lineStart = value.lastIndexOf("\n", pos - 1) + 1;
+      let lineEnd = value.indexOf("\n", pos);
+      if (lineEnd === -1) lineEnd = value.length;
+      const line = value.slice(lineStart, lineEnd);
+      const task = /^(\s*)([-*+])[ \t]+\[[ xX]\][ \t]+/.exec(line);
+      const ol = /^(\s*)(\d+)([.)])[ \t]+/.exec(line);
+      const ul = /^(\s*)([-*+])[ \t]+/.exec(line);
+      const full = (task ?? ol ?? ul)?.[0] ?? null;
+      // 仅当光标恰在标记末尾、且该项无正文时触发；否则交给默认逐字删除
+      if (
+        full !== null &&
+        pos === lineStart + full.length &&
+        line.slice(full.length).trim() === ""
+      ) {
+        e.preventDefault();
+        const value2 = value.slice(0, lineStart) + value.slice(lineStart + full.length);
+        pendingSel.current = [lineStart, lineStart];
+        onChange({ body: value2 });
+      }
+      return;
+    }
     if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return;
     const ta = textareaRef.current;
     if (!ta || ta.selectionStart !== ta.selectionEnd) return;
