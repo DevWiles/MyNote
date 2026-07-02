@@ -12,7 +12,7 @@ import {
   FolderTree,
   RefreshCw,
 } from "lucide-react";
-import { check } from "@tauri-apps/plugin-updater";
+import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 import type { ThemeMode } from "../types";
 import { useStore } from "../store/useStore";
@@ -60,25 +60,41 @@ export default function SettingsView() {
   // 版本 / 检查更新（展示用版本 = 发布 Tag，构建时注入）
   const version = __APP_VERSION__;
   const [updateMsg, setUpdateMsg] = useState("");
-  const [checking, setChecking] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [available, setAvailable] = useState<Update | null>(null);
 
+  // 只检查，不自动装；发现新版本后等用户确认
   const checkUpdate = async () => {
-    setChecking(true);
+    setBusy(true);
+    setAvailable(null);
     setUpdateMsg("正在检查更新…");
     try {
       const update = await check();
       if (update) {
-        setUpdateMsg(`发现新版本 ${update.version}，正在下载…`);
-        await update.downloadAndInstall();
-        setUpdateMsg("下载完成，正在重启应用…");
-        await relaunch();
+        setAvailable(update);
+        setUpdateMsg(`发现新版本 ${update.version}`);
       } else {
         setUpdateMsg("已是最新版本 ✓");
       }
     } catch (e) {
       setUpdateMsg(`检查失败：${String(e)}`);
     } finally {
-      setChecking(false);
+      setBusy(false);
+    }
+  };
+
+  // 用户点确认后才下载安装并重启
+  const installUpdate = async () => {
+    if (!available) return;
+    setBusy(true);
+    setUpdateMsg("正在下载…");
+    try {
+      await available.downloadAndInstall();
+      setUpdateMsg("下载完成，正在重启应用…");
+      await relaunch();
+    } catch (e) {
+      setUpdateMsg(`更新失败：${String(e)}`);
+      setBusy(false);
     }
   };
 
@@ -332,16 +348,30 @@ export default function SettingsView() {
             <p className="mb-4 text-xs text-ink-soft">
               当前版本 v{version || "—"}。可在应用内检查并安装新版本，无需重新下载安装。
             </p>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <Button
                 variant="ghost"
                 onClick={checkUpdate}
-                disabled={checking || !isTauri}
+                disabled={busy || !isTauri}
                 className="flex items-center gap-2 border border-mint-100"
               >
-                <RefreshCw size={15} className={checking ? "animate-spin" : ""} />
+                <RefreshCw
+                  size={15}
+                  className={busy && !available ? "animate-spin" : ""}
+                />
                 检查更新
               </Button>
+              {available && (
+                <Button
+                  variant="primary"
+                  onClick={installUpdate}
+                  disabled={busy}
+                  className="flex items-center gap-2"
+                >
+                  <Download size={15} />
+                  立即更新到 {available.version}
+                </Button>
+              )}
               {updateMsg && (
                 <span className="text-xs text-ink-soft">{updateMsg}</span>
               )}
