@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { getCurrentWindow, PhysicalPosition } from "@tauri-apps/api/window";
 import { Minus, Square, X } from "lucide-react";
 import { isWindows } from "./lib/platform";
 import Sidebar from "./components/Sidebar";
@@ -26,15 +26,45 @@ function WinTitleBar() {
   const win = getCurrentWindow();
   const btn =
     "flex h-8 w-11 items-center justify-center text-ink-soft transition-colors hover:bg-mint-100 hover:text-ink";
-  // 手动 startDragging（左键、非按钮），绕过 WebView2 上 data-tauri-drag-region 松手不停的漂移 bug
-  const startDrag = (e: React.MouseEvent) => {
+  // 手动拖动：用 setPosition 自己移动窗口 + Pointer Capture，
+  // 绕过 WebView2 上原生 startDragging 松手不停的漂移 bug（透明窗口特有）。
+  const onPointerDown = async (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return;
     if ((e.target as HTMLElement).closest("button")) return;
-    void win.startDragging();
+    const el = e.currentTarget;
+    const pointerId = e.pointerId;
+    const sx = e.screenX;
+    const sy = e.screenY;
+    el.setPointerCapture(pointerId);
+    const scale = await win.scaleFactor();
+    const pos = await win.outerPosition(); // 物理像素
+    const ox = pos.x - sx * scale;
+    const oy = pos.y - sy * scale;
+    const move = (ev: PointerEvent) => {
+      void win.setPosition(
+        new PhysicalPosition(
+          Math.round(ev.screenX * scale + ox),
+          Math.round(ev.screenY * scale + oy),
+        ),
+      );
+    };
+    const up = () => {
+      try {
+        el.releasePointerCapture(pointerId);
+      } catch {
+        /* ignore */
+      }
+      el.removeEventListener("pointermove", move);
+      el.removeEventListener("pointerup", up);
+      el.removeEventListener("pointercancel", up);
+    };
+    el.addEventListener("pointermove", move);
+    el.addEventListener("pointerup", up);
+    el.addEventListener("pointercancel", up);
   };
   return (
     <div
-      onMouseDown={startDrag}
+      onPointerDown={onPointerDown}
       onDoubleClick={() => void win.toggleMaximize()}
       className="flex h-8 shrink-0 items-center justify-end"
     >
