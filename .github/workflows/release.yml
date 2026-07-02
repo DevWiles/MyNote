@@ -51,6 +51,8 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # 展示用版本号 = 发布 Tag（注入前端，设置页显示）
+          VITE_APP_VERSION: ${{ github.ref_name }}
           # 更新签名（在仓库 Secrets 里配置；用于生成 latest.json 与 .sig）
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}

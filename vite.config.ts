@@ -15,12 +15,29 @@ function gitShortHash(): string {
   }
 }
 
+// 展示用版本号 = 发布 Tag（CI 传 VITE_APP_VERSION=github.ref_name），
+// 本地回退到最近的 git tag；都取不到则 dev。去掉前缀 v。
+function appVersion(): string {
+  // @ts-expect-error process is a nodejs global
+  const env = process.env.VITE_APP_VERSION as string | undefined;
+  if (env) return env.replace(/^v/, "");
+  try {
+    return execSync("git describe --tags --abbrev=0")
+      .toString()
+      .trim()
+      .replace(/^v/, "");
+  } catch {
+    return "dev";
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig(async () => ({
   plugins: [react(), tailwindcss()],
 
   define: {
     __APP_COMMIT__: JSON.stringify(gitShortHash()),
+    __APP_VERSION__: JSON.stringify(appVersion()),
   },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`

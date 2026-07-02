@@ -26,9 +26,16 @@ function WinTitleBar() {
   const win = getCurrentWindow();
   const btn =
     "flex h-8 w-11 items-center justify-center text-ink-soft transition-colors hover:bg-mint-100 hover:text-ink";
+  // 手动 startDragging（左键、非按钮），绕过 WebView2 上 data-tauri-drag-region 松手不停的漂移 bug
+  const startDrag = (e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    if ((e.target as HTMLElement).closest("button")) return;
+    void win.startDragging();
+  };
   return (
     <div
-      data-tauri-drag-region
+      onMouseDown={startDrag}
+      onDoubleClick={() => void win.toggleMaximize()}
       className="flex h-8 shrink-0 items-center justify-end"
     >
       <button className={btn} title="最小化" onClick={() => win.minimize()}>

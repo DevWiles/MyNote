@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import { check } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
-import { getVersion } from "@tauri-apps/api/app";
 import type { ThemeMode } from "../types";
 import { useStore } from "../store/useStore";
 import { dragRegion } from "../lib/platform";
@@ -58,13 +57,10 @@ export default function SettingsView() {
   const [needRestart, setNeedRestart] = useState(false);
   const [pathError, setPathError] = useState<string | null>(null);
 
-  // 版本 / 检查更新
-  const [version, setVersion] = useState("");
+  // 版本 / 检查更新（展示用版本 = 发布 Tag，构建时注入）
+  const version = __APP_VERSION__;
   const [updateMsg, setUpdateMsg] = useState("");
   const [checking, setChecking] = useState(false);
-  useEffect(() => {
-    if (isTauri) getVersion().then(setVersion).catch(() => {});
-  }, []);
 
   const checkUpdate = async () => {
     setChecking(true);
