@@ -10,7 +10,11 @@ import {
   FolderOpen,
   RotateCcw,
   FolderTree,
+  RefreshCw,
 } from "lucide-react";
+import { check } from "@tauri-apps/plugin-updater";
+import { relaunch } from "@tauri-apps/plugin-process";
+import { getVersion } from "@tauri-apps/api/app";
 import type { ThemeMode } from "../types";
 import { useStore } from "../store/useStore";
 import { Button, inputClass } from "../components/ui";
@@ -52,6 +56,34 @@ export default function SettingsView() {
   });
   const [needRestart, setNeedRestart] = useState(false);
   const [pathError, setPathError] = useState<string | null>(null);
+
+  // 版本 / 检查更新
+  const [version, setVersion] = useState("");
+  const [updateMsg, setUpdateMsg] = useState("");
+  const [checking, setChecking] = useState(false);
+  useEffect(() => {
+    if (isTauri) getVersion().then(setVersion).catch(() => {});
+  }, []);
+
+  const checkUpdate = async () => {
+    setChecking(true);
+    setUpdateMsg("正在检查更新…");
+    try {
+      const update = await check();
+      if (update) {
+        setUpdateMsg(`发现新版本 ${update.version}，正在下载…`);
+        await update.downloadAndInstall();
+        setUpdateMsg("下载完成，正在重启应用…");
+        await relaunch();
+      } else {
+        setUpdateMsg("已是最新版本 ✓");
+      }
+    } catch (e) {
+      setUpdateMsg(`检查失败：${String(e)}`);
+    } finally {
+      setChecking(false);
+    }
+  };
 
   // 所选目录里是否已存在该用途的 MyNote 子目录（note / json）
   const targetExists = async (picked: string, sub: string) => {
@@ -295,6 +327,28 @@ export default function SettingsView() {
                 )}
               </div>
             )}
+          </section>
+
+          {/* 更新 */}
+          <section>
+            <h2 className="mb-1 text-sm font-semibold text-ink">更新</h2>
+            <p className="mb-4 text-xs text-ink-soft">
+              当前版本 v{version || "—"}。可在应用内检查并安装新版本，无需重新下载安装。
+            </p>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                onClick={checkUpdate}
+                disabled={checking || !isTauri}
+                className="flex items-center gap-2 border border-mint-100"
+              >
+                <RefreshCw size={15} className={checking ? "animate-spin" : ""} />
+                检查更新
+              </Button>
+              {updateMsg && (
+                <span className="text-xs text-ink-soft">{updateMsg}</span>
+              )}
+            </div>
           </section>
 
           {/* 数据 */}

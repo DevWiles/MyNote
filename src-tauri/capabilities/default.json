@@ -28,6 +28,8 @@
     {
       "identifier": "fs:scope",
       "allow": ["$APPDATA/**", "$HOME/**"]
-    }
+    },
+    "updater:default",
+    "process:default"
   ]
 }
