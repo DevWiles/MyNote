@@ -171,6 +171,9 @@ textarea,
 }
 .md-body li::marker {
   color: var(--color-ink-soft);
+  /* 显式声明，保证 Windows(WebView2/Chromium)与 macOS(WebKit)序号都用等宽数字对齐 */
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 /* 待办清单项：去掉圆点，留复选框 */
 .md-body li:has(> input[type="checkbox"]) {
