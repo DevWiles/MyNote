@@ -7,6 +7,17 @@ fn set_theme(window: tauri::WebviewWindow, dark: bool) {
     } else {
         tauri::Theme::Light
     }));
+    // Windows：随主题重设 Acrylic 磨砂 tint（亮=乳白，暗=深灰），高不透明度避免透亮
+    #[cfg(target_os = "windows")]
+    {
+        use window_vibrancy::apply_acrylic;
+        let tint = if dark {
+            (24, 27, 33, 225)
+        } else {
+            (249, 251, 249, 225)
+        };
+        let _ = apply_acrylic(&window, Some(tint));
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -32,16 +43,14 @@ pub fn run() {
                 )
                 .expect("failed to apply window vibrancy (macOS only)");
             }
-            // Windows：去原生标题栏 + 毛玻璃（Win11 Mica，退回 Win10 Acrylic）
+            // Windows：去原生标题栏 + Acrylic 磨砂（默认乳白，前端按主题再调）
             #[cfg(target_os = "windows")]
             {
                 use tauri::Manager;
-                use window_vibrancy::{apply_acrylic, apply_mica};
+                use window_vibrancy::apply_acrylic;
                 if let Some(window) = _app.get_webview_window("main") {
                     let _ = window.set_decorations(false);
-                    if apply_mica(&window, None).is_err() {
-                        let _ = apply_acrylic(&window, Some((248, 250, 248, 190)));
-                    }
+                    let _ = apply_acrylic(&window, Some((249, 251, 249, 225)));
                 }
             }
             Ok(())
