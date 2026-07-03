@@ -46,6 +46,10 @@ import {
   detectToken,
   PAIRS,
   WRAP_CHARS,
+  CJK_PAIRS,
+  CJK_CLOSERS,
+  ALL_PAIRS,
+  insertedChar,
   type SlashCmd,
 } from "../lib/completion";
 import { deepseekChat } from "../lib/deepseek";
@@ -752,8 +756,32 @@ function Editor({
   const onBodyChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     const caret = e.target.selectionStart;
+    const composing = (e.nativeEvent as InputEvent).isComposing;
+
+    // 中文（全角）符号自动闭合 / 越过：基于输入差分，兼容输入法直接提交的全角标点
+    if (!composing && ac.pairs) {
+      const ins = insertedChar(note.body, value, caret);
+      if (ins) {
+        const close = CJK_PAIRS[ins];
+        // 全角左符 → 补右符（右侧已是对应右符则不补，避免重复）
+        if (close && value[caret] !== close) {
+          pendingSel.current = [caret, caret];
+          closeMenu();
+          onChange({ body: value.slice(0, caret) + close + value.slice(caret) });
+          return;
+        }
+        // 全角右符「越过」：光标右侧已是同一右符 → 撤销这次输入并把光标移到其后
+        if (CJK_CLOSERS.has(ins) && value[caret] === ins) {
+          pendingSel.current = [caret, caret];
+          closeMenu();
+          onChange({ body: note.body });
+          return;
+        }
+      }
+    }
+
     onChange({ body: value });
-    if ((e.nativeEvent as InputEvent).isComposing) return;
+    if (composing) return;
     refreshMenu(value, caret);
     scheduleAI(value, caret);
   };
@@ -895,8 +923,8 @@ function Editor({
       if (!ta || ta.selectionStart !== ta.selectionEnd) return; // 有选区交给默认删除
       const pos = ta.selectionStart;
       const value = note.body;
-      // 空配对内退格：光标夹在自动补全的左右符之间 → 一起删掉
-      if (ac.pairs && pos > 0 && PAIRS[value[pos - 1]] === value[pos]) {
+      // 空配对内退格：光标夹在自动补全的左右符之间（ASCII 或全角）→ 一起删掉
+      if (ac.pairs && pos > 0 && ALL_PAIRS[value[pos - 1]] === value[pos]) {
         e.preventDefault();
         pendingSel.current = [pos - 1, pos - 1];
         onChange({ body: value.slice(0, pos - 1) + value.slice(pos + 1) });

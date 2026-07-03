@@ -163,3 +163,41 @@ export const WRAP_CHARS: Record<string, [string, string]> = {
   "{": ["{", "}"],
   '"': ['"', '"'],
 };
+
+/** 中文（全角）成对符号：左符 → 右符。经输入法提交，用输入差分识别，不走 keydown */
+export const CJK_PAIRS: Record<string, string> = {
+  "（": "）",
+  "【": "】",
+  "「": "」",
+  "『": "』",
+  "《": "》",
+  "〈": "〉",
+  "［": "］",
+  "｛": "｝",
+  "“": "”",
+  "‘": "’",
+};
+
+/** 所有全角右符集合，用于「越过」判断 */
+export const CJK_CLOSERS = new Set(Object.values(CJK_PAIRS));
+
+/** 合并 ASCII + 全角的「左符 → 右符」查表（供退格删配对用） */
+export const ALL_PAIRS: Record<string, string> = { ...PAIRS, ...CJK_PAIRS };
+
+/**
+ * 若 newV 相对 oldV「恰好在 caret 前插入了一个字符」，返回该字符，否则 null。
+ * 用于识别用户刚键入/输入法刚提交的单个符号；插入两个字符（输入法自带配对）时返回 null，
+ * 天然避免自动闭合与输入法配对叠加成重复符号。
+ */
+export function insertedChar(
+  oldV: string,
+  newV: string,
+  caret: number,
+): string | null {
+  if (newV.length !== oldV.length + 1) return null;
+  const i = caret - 1;
+  if (i < 0) return null;
+  if (newV.slice(0, i) !== oldV.slice(0, i)) return null;
+  if (newV.slice(i + 1) !== oldV.slice(i)) return null;
+  return newV[i];
+}
