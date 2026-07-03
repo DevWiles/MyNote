@@ -28,6 +28,10 @@ function WinTitleBar() {
     "flex h-8 w-11 items-center justify-center text-ink-soft transition-colors hover:bg-mint-100 hover:text-ink";
   // 手动拖动：用 setPosition 自己移动窗口 + Pointer Capture，
   // 绕过 WebView2 上原生 startDragging 松手不停的漂移 bug（透明窗口特有）。
+  // 关键：setPosition 是异步 IPC，若每个 pointermove 都发一次会积压，
+  // 造成「鼠标停了窗口还在走」的漂移与延迟。这里用「在途守卫」——同一时刻
+  // 只允许一个 setPosition 在飞，其间的移动只更新目标坐标，上一个完成后再补发
+  // 最新目标。队列永不积压：鼠标一停，最终落点即最后目标，不漂移、不掉队。
   const onPointerDown = async (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return;
     if ((e.target as HTMLElement).closest("button")) return;
@@ -40,15 +44,36 @@ function WinTitleBar() {
     const pos = await win.outerPosition(); // 物理像素
     const ox = pos.x - sx * scale;
     const oy = pos.y - sy * scale;
+
+    let targetX = pos.x;
+    let targetY = pos.y;
+    let inFlight = false;
+    let dirty = false;
+    let dragging = true;
+
+    const flush = () => {
+      if (!dragging) return;
+      if (inFlight) {
+        dirty = true; // 在途，记脏，等它完成后补发最新目标
+        return;
+      }
+      inFlight = true;
+      dirty = false;
+      void win
+        .setPosition(new PhysicalPosition(targetX, targetY))
+        .finally(() => {
+          inFlight = false;
+          if (dirty && dragging) flush();
+        });
+    };
+
     const move = (ev: PointerEvent) => {
-      void win.setPosition(
-        new PhysicalPosition(
-          Math.round(ev.screenX * scale + ox),
-          Math.round(ev.screenY * scale + oy),
-        ),
-      );
+      targetX = Math.round(ev.screenX * scale + ox);
+      targetY = Math.round(ev.screenY * scale + oy);
+      flush();
     };
     const up = () => {
+      dragging = false;
       try {
         el.releasePointerCapture(pointerId);
       } catch {
@@ -57,6 +82,8 @@ function WinTitleBar() {
       el.removeEventListener("pointermove", move);
       el.removeEventListener("pointerup", up);
       el.removeEventListener("pointercancel", up);
+      // 兜底：确保窗口停在最后的目标位置（即使最后一帧被在途守卫丢掉）
+      void win.setPosition(new PhysicalPosition(targetX, targetY));
     };
     el.addEventListener("pointermove", move);
     el.addEventListener("pointerup", up);
