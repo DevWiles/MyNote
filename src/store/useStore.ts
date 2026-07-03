@@ -21,6 +21,14 @@ const DEFAULT_TEMPLATE = `你是一位高效的个人助理。请根据以下「
 用中文输出 Markdown，包含：## 概览（一两句总结）、## 主要进展（要点列表）、## 亮点与思考、## 下一步建议。
 不要编造数据，只基于给定内容。`;
 
+// 补全默认值：AI 续写默认关闭（需 API Key、会消耗额度），其余本地功能默认开启
+const DEFAULT_AUTOCOMPLETE = {
+  ai: false,
+  pairs: true,
+  slash: true,
+  words: true,
+};
+
 export interface AppState {
   tasks: Task[];
   notes: Note[];
@@ -97,6 +105,7 @@ export const useStore = create<AppState>()(
         deepseekModel: "deepseek-chat",
         reportTemplate: DEFAULT_TEMPLATE,
         theme: "light",
+        autocomplete: { ...DEFAULT_AUTOCOMPLETE },
       },
       noteView: { mode: "split", pane: "write", outline: true },
       notesReady: false,
@@ -378,7 +387,7 @@ export const useStore = create<AppState>()(
     }),
     {
       name: "mynote-data",
-      version: 3,
+      version: 4,
       storage: createJSONStorage(() => appStorage),
       migrate: (persisted, version) => {
         const state = persisted as Partial<AppState> | undefined;
@@ -390,6 +399,16 @@ export const useStore = create<AppState>()(
             level: t.level ?? "day",
             parentId: t.parentId ?? null,
           }));
+        }
+        // v4：为旧数据补全 autocomplete 偏好
+        if (state?.settings && version < 4) {
+          state.settings = {
+            ...state.settings,
+            autocomplete: {
+              ...DEFAULT_AUTOCOMPLETE,
+              ...(state.settings.autocomplete ?? {}),
+            },
+          };
         }
         return state as AppState;
       },

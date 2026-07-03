@@ -241,6 +241,86 @@ export default function SettingsView() {
             </div>
           </section>
 
+          {/* 笔记补全 */}
+          <section>
+            <h2 className="mb-1 text-sm font-semibold text-ink">笔记自动补全</h2>
+            <p className="mb-4 text-xs text-ink-soft">
+              在笔记编辑器里启用的补全功能，可按需开关。
+            </p>
+            <div className="flex flex-col divide-y divide-mint-100 overflow-hidden rounded-xl border border-mint-100">
+              {(
+                [
+                  {
+                    key: "ai",
+                    label: "AI 智能续写",
+                    desc: "光标停在文末时，按上下文给出灰色续写建议，Tab 采纳 / Esc 忽略。需配置 DeepSeek API Key，会消耗额度。",
+                  },
+                  {
+                    key: "pairs",
+                    label: "符号自动闭合",
+                    desc: "输入 ` ( [ { \" 自动补上配对符号；选中文字后按 ` * ~ _ ( [ { 直接包裹。",
+                  },
+                  {
+                    key: "slash",
+                    label: "斜杠命令菜单",
+                    desc: "输入 / 弹出菜单，快速插入标题、列表、代码块、表格等块。",
+                  },
+                  {
+                    key: "words",
+                    label: "标签 / 历史词补全",
+                    desc: "输入 # 补全已用过的标签；输入词时补全笔记中出现过的标题与词语。",
+                  },
+                ] as const
+              ).map((row) => {
+                const on = settings.autocomplete[row.key];
+                return (
+                  <label
+                    key={row.key}
+                    className="flex cursor-pointer items-start gap-3 bg-surface px-3.5 py-3"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm text-ink">{row.label}</div>
+                      <div className="mt-0.5 text-xs text-ink-soft">
+                        {row.desc}
+                      </div>
+                      {row.key === "ai" &&
+                        on &&
+                        !settings.deepseekApiKey && (
+                          <div className="mt-1 text-xs text-amber-600">
+                            尚未配置 API Key，续写不会生效。
+                          </div>
+                        )}
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={on}
+                      onClick={() =>
+                        updateSettings({
+                          autocomplete: {
+                            ...settings.autocomplete,
+                            [row.key]: !on,
+                          },
+                        })
+                      }
+                      className={[
+                        "relative mt-0.5 h-6 w-10 shrink-0 rounded-full transition-colors",
+                        on ? "bg-mint-500" : "bg-mint-100",
+                      ].join(" ")}
+                    >
+                      <span
+                        className={[
+                          "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform",
+                          on ? "translate-x-[18px]" : "translate-x-0.5",
+                        ].join(" ")}
+                      />
+                    </button>
+                  </label>
+                );
+              })}
+            </div>
+          </section>
+
           {/* 报告模板 */}
           <section>
             <h2 className="mb-1 text-sm font-semibold text-ink">报告 Prompt 模板</h2>

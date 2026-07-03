@@ -37,6 +37,18 @@ import { Button, EmptyState } from "../components/ui";
 import Modal from "../components/Modal";
 import Markdown from "../components/Markdown";
 import { exportNotes } from "../store/notesFs";
+import { getCaretCoordinates } from "../lib/caret";
+import {
+  filterSlash,
+  buildCorpus,
+  matchTags,
+  matchPhrases,
+  detectToken,
+  PAIRS,
+  WRAP_CHARS,
+  type SlashCmd,
+} from "../lib/completion";
+import { deepseekChat } from "../lib/deepseek";
 
 export default function NotesView() {
   const { notes, addNote, updateNote, deleteNote, deleteNotes, notesReady } =
@@ -455,15 +467,52 @@ function Editor({
   onExport: () => void;
   onDelete: () => void;
 }) {
-  const { noteView, setNoteView } = useStore();
+  const { noteView, setNoteView, notes, settings } = useStore();
   const viewMode = noteView.mode;
   const singlePane = noteView.pane;
   const showOutline = noteView.outline;
+  const ac = settings.autocomplete;
   const titleRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
+  const ghostRef = useRef<HTMLDivElement>(null);
   /** 工具栏插入后待恢复的选区，body 提交后由 effect 应用 */
   const pendingSel = useRef<[number, number] | null>(null);
+
+  // ── 补全：斜杠命令 / 标签 / 历史词 的下拉菜单 ─────────────────
+  interface MenuItem {
+    label: string;
+    sub?: string;
+    /** 词/标签补全：替换 token 的文本 */
+    replace?: string;
+    /** 斜杠命令 */
+    cmd?: SlashCmd;
+  }
+  interface MenuState {
+    items: MenuItem[];
+    active: number;
+    top: number;
+    left: number;
+    /** 被替换区间起点（token 的 from） */
+    from: number;
+  }
+  const [menu, setMenu] = useState<MenuState | null>(null);
+  const menuRef = useRef<MenuState | null>(null);
+  menuRef.current = menu;
+  const closeMenu = () => setMenu(null);
+
+  // ── AI 幽灵文本续写 ──────────────────────────────────────────
+  const [ghost, setGhost] = useState<string>("");
+  const ghostRefVal = useRef<string>("");
+  ghostRefVal.current = ghost;
+  const aiTimer = useRef<number | null>(null);
+  const aiSeq = useRef(0);
+  const dismissGhost = () => {
+    if (ghostRefVal.current) setGhost("");
+  };
+
+  // 历史词 / 标签语料库（随笔记变化重建）
+  const corpus = useMemo(() => buildCorpus(notes), [notes]);
 
   // 新建笔记时，光标落在标题处并选中默认标题，便于直接覆盖输入
   useEffect(() => {
@@ -542,8 +591,262 @@ function Editor({
   const TABLE_SNIPPET =
     "| 列1 | 列2 | 列3 |\n| --- | --- | --- |\n|  |  |  |\n";
 
+  // ── 补全菜单：定位、检测、采纳 ───────────────────────────────
+  /** 在 token 起点处、下一行位置弹出菜单 */
+  const openMenuAt = (items: MenuItem[], from: number, _caret: number) => {
+    const ta = textareaRef.current;
+    if (!ta || items.length === 0) {
+      closeMenu();
+      return;
+    }
+    const c = getCaretCoordinates(ta, from);
+    const rect = ta.getBoundingClientRect();
+    setMenu({
+      items,
+      active: 0,
+      from,
+      left: rect.left + c.left - ta.scrollLeft,
+      top: rect.top + c.top - ta.scrollTop + c.height + 4,
+    });
+  };
+
+  /** 根据光标左侧 token 刷新补全菜单（斜杠 / 标签 / 历史词） */
+  const refreshMenu = (value: string, caret: number) => {
+    const tok = detectToken(value, caret);
+    if (!tok) {
+      closeMenu();
+      return;
+    }
+    if (tok.kind === "slash" && ac.slash) {
+      const cmds = filterSlash(tok.token);
+      openMenuAt(
+        cmds.map((c) => ({ label: c.title, sub: c.key, cmd: c })),
+        tok.from,
+        caret,
+      );
+      return;
+    }
+    if (tok.kind === "tag" && ac.words) {
+      const tags = matchTags(corpus.tags, tok.token);
+      openMenuAt(
+        tags.map((t) => ({ label: "#" + t, replace: "#" + t })),
+        tok.from,
+        caret,
+      );
+      return;
+    }
+    if (tok.kind === "word" && ac.words) {
+      const ph = matchPhrases(corpus.phrases, tok.token);
+      openMenuAt(
+        ph.map((p) => ({ label: p, replace: p })),
+        tok.from,
+        caret,
+      );
+      return;
+    }
+    closeMenu();
+  };
+
+  /** 采纳斜杠命令：删掉 /token 并插入对应块/前缀 */
+  const applySlash = (cmd: SlashCmd, from: number) => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const caret = ta.selectionStart;
+    const value = note.body;
+    const before = value.slice(0, from);
+    const after = value.slice(caret);
+    let insert = cmd.text;
+    const atLineStart = from === 0 || before.endsWith("\n");
+    if (cmd.block && !atLineStart) insert = "\n" + insert;
+    const pos = before.length + insert.length - (cmd.caretBack ?? 0);
+    pendingSel.current = [pos, pos];
+    closeMenu();
+    onChange({ body: before + insert + after });
+  };
+
+  /** 采纳词/标签：用所选文本替换 token */
+  const applyWord = (replace: string, from: number) => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const caret = ta.selectionStart;
+    const value = note.body;
+    const pos = from + replace.length;
+    pendingSel.current = [pos, pos];
+    closeMenu();
+    onChange({ body: value.slice(0, from) + replace + value.slice(caret) });
+  };
+
+  const acceptMenuItem = (item: MenuItem, from: number) => {
+    if (item.cmd) applySlash(item.cmd, from);
+    else if (item.replace !== undefined) applyWord(item.replace, from);
+  };
+
+  // ── AI 幽灵文本续写 ──────────────────────────────────────────
+  /** 光标在文末且启用后，防抖调用 DeepSeek 生成续写 */
+  const scheduleAI = (value: string, caret: number) => {
+    if (aiTimer.current) {
+      clearTimeout(aiTimer.current);
+      aiTimer.current = null;
+    }
+    dismissGhost();
+    if (!ac.ai || !settings.deepseekApiKey) return;
+    if (caret !== value.length) return; // 仅在文末续写，避免与后文重叠
+    const text = value.trimEnd();
+    if (text.length < 2) return;
+    const seq = ++aiSeq.current;
+    aiTimer.current = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const out = await deepseekChat(
+            settings.deepseekApiKey,
+            settings.deepseekModel,
+            [
+              {
+                role: "system",
+                content:
+                  "你是中文笔记续写助手。根据用户已写的内容，自然地续写紧接着的一小段（约 10-40 字），保持相同语言与语气。只输出续写文字本身，不要重复已有内容，不要加引号或说明。",
+              },
+              { role: "user", content: text.slice(-1500) },
+            ],
+          );
+          const ta = textareaRef.current;
+          // 结果过期（用户又改动 / 移动了光标）或补全菜单已打开则丢弃
+          if (seq !== aiSeq.current || !ta || menuRef.current) return;
+          if (ta.value !== value || ta.selectionStart !== value.length) return;
+          const clean = out.trim().replace(/^["「『]+|["」』]+$/g, "");
+          if (clean) setGhost(clean);
+        } catch {
+          // 续写为增强项，失败静默处理，不打扰书写
+        }
+      })();
+    }, 700);
+  };
+
+  /** 采纳幽灵文本：追加到文末 */
+  const acceptGhost = () => {
+    const g = ghostRefVal.current;
+    if (!g) return;
+    const value2 = note.body + g;
+    const pos = value2.length;
+    pendingSel.current = [pos, pos];
+    setGhost("");
+    onChange({ body: value2 });
+  };
+
+  // 幽灵层与 textarea 滚动对齐
+  useEffect(() => {
+    if (ghost && ghostRef.current && textareaRef.current) {
+      ghostRef.current.scrollTop = textareaRef.current.scrollTop;
+    }
+  }, [ghost]);
+
+  // 卸载（切换笔记）时清掉未触发的续写定时器
+  useEffect(
+    () => () => {
+      if (aiTimer.current) clearTimeout(aiTimer.current);
+    },
+    [],
+  );
+
+  /** textarea 内容变化：提交 + 刷新补全 + 安排续写（组字中先跳过） */
+  const onBodyChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    const caret = e.target.selectionStart;
+    onChange({ body: value });
+    if ((e.nativeEvent as InputEvent).isComposing) return;
+    refreshMenu(value, caret);
+    scheduleAI(value, caret);
+  };
+
+  /** 输入法组字结束后再触发补全（此时 CJK 词已定型） */
+  const onCompositionEndBody = (e: React.CompositionEvent<HTMLTextAreaElement>) => {
+    const ta = e.currentTarget;
+    refreshMenu(ta.value, ta.selectionStart);
+    scheduleAI(ta.value, ta.selectionStart);
+  };
+
   // Tab/Shift+Tab 控制缩进；回车在列表行自动续项、空项退出
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // 补全菜单打开时：方向键/回车/Tab/Esc 优先操作菜单
+    const m = menuRef.current;
+    if (m && m.items.length && !e.nativeEvent.isComposing) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setMenu({ ...m, active: (m.active + 1) % m.items.length });
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setMenu({ ...m, active: (m.active - 1 + m.items.length) % m.items.length });
+        return;
+      }
+      if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        acceptMenuItem(m.items[m.active], m.from);
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closeMenu();
+        return;
+      }
+    }
+
+    // 幽灵文本：Tab 采纳、Esc 忽略；其它按键先撤下（若为输入会重新触发续写）
+    if (ghostRefVal.current && !e.nativeEvent.isComposing) {
+      if (e.key === "Tab") {
+        e.preventDefault();
+        acceptGhost();
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        dismissGhost();
+        return;
+      }
+      dismissGhost();
+    }
+
+    // Markdown 符号自动闭合 / 包裹选区
+    if (
+      ac.pairs &&
+      !e.nativeEvent.isComposing &&
+      !e.ctrlKey &&
+      !e.metaKey &&
+      !e.altKey
+    ) {
+      const ta = textareaRef.current;
+      if (ta) {
+        const key = e.key;
+        const hasSel = ta.selectionStart !== ta.selectionEnd;
+        const value = note.body;
+        const pos = ta.selectionStart;
+        // 有选中 + 可包裹符号 → 在两侧加符号
+        if (hasSel && WRAP_CHARS[key]) {
+          e.preventDefault();
+          const [b, a] = WRAP_CHARS[key];
+          wrap(b, a, "");
+          return;
+        }
+        // 越过：键入的闭合符正好等于光标右侧字符 → 光标右移一位
+        const closers = new Set([")", "]", "}", "`", '"']);
+        if (!hasSel && closers.has(key) && value[pos] === key) {
+          e.preventDefault();
+          ta.setSelectionRange(pos + 1, pos + 1);
+          return;
+        }
+        // 成对左符 → 补右符并把光标放中间
+        if (!hasSel && PAIRS[key]) {
+          e.preventDefault();
+          pendingSel.current = [pos + 1, pos + 1];
+          onChange({
+            body: value.slice(0, pos) + key + PAIRS[key] + value.slice(pos),
+          });
+          return;
+        }
+      }
+    }
+
     // Tab / Shift+Tab：对当前行或选中的多行整体缩进 / 反缩进（2 空格一级）
     if (e.key === "Tab" && !e.nativeEvent.isComposing) {
       const ta = textareaRef.current;
@@ -592,6 +895,13 @@ function Editor({
       if (!ta || ta.selectionStart !== ta.selectionEnd) return; // 有选区交给默认删除
       const pos = ta.selectionStart;
       const value = note.body;
+      // 空配对内退格：光标夹在自动补全的左右符之间 → 一起删掉
+      if (ac.pairs && pos > 0 && PAIRS[value[pos - 1]] === value[pos]) {
+        e.preventDefault();
+        pendingSel.current = [pos - 1, pos - 1];
+        onChange({ body: value.slice(0, pos - 1) + value.slice(pos + 1) });
+        return;
+      }
       const lineStart = value.lastIndexOf("\n", pos - 1) + 1;
       let lineEnd = value.indexOf("\n", pos);
       if (lineEnd === -1) lineEnd = value.length;
@@ -848,21 +1158,50 @@ function Editor({
         {/* 编辑面板：双页并排 / 单页（写或预览） */}
         <div className="flex flex-1 overflow-hidden">
           {(viewMode === "split" || singlePane === "write") && (
-            <textarea
-              ref={textareaRef}
-              value={note.body}
-              onChange={(e) => onChange({ body: e.target.value })}
-              onKeyDown={handleKeyDown}
-              placeholder="在此用 Markdown 书写…"
-              spellCheck={false}
+            <div
               className={[
-                "h-full resize-none bg-surface p-6 font-mono text-sm leading-relaxed text-ink outline-none placeholder:text-ink-soft/40",
+                "relative h-full bg-surface",
                 viewMode === "split"
                   ? "w-1/2 border-r border-mint-100"
                   : "w-full",
               ].join(" ")}
-              style={{ userSelect: "text" }}
-            />
+            >
+              {/* AI 续写幽灵层：与 textarea 同排版，正文透明、仅显示灰色续写 */}
+              {ghost && (
+                <div
+                  ref={ghostRef}
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words p-6 font-mono text-sm leading-relaxed text-transparent"
+                >
+                  {note.body}
+                  <span className="text-ink-soft/50">{ghost}</span>
+                </div>
+              )}
+              <textarea
+                ref={textareaRef}
+                value={note.body}
+                onChange={onBodyChange}
+                onKeyDown={handleKeyDown}
+                onCompositionEnd={onCompositionEndBody}
+                onScroll={(e) => {
+                  if (ghostRef.current)
+                    ghostRef.current.scrollTop = e.currentTarget.scrollTop;
+                }}
+                onClick={() => {
+                  closeMenu();
+                  dismissGhost();
+                }}
+                onBlur={() => {
+                  // 延迟关闭，留出点击菜单项的时间
+                  window.setTimeout(closeMenu, 150);
+                  dismissGhost();
+                }}
+                placeholder="在此用 Markdown 书写…"
+                spellCheck={false}
+                className="relative h-full w-full resize-none bg-transparent p-6 font-mono text-sm leading-relaxed text-ink outline-none placeholder:text-ink-soft/40"
+                style={{ userSelect: "text" }}
+              />
+            </div>
           )}
           {(viewMode === "split" || singlePane === "preview") && (
             <div
@@ -909,6 +1248,37 @@ function Editor({
           </aside>
         )}
       </div>
+
+      {/* 补全下拉菜单（斜杠命令 / 标签 / 历史词）：定位在光标处 */}
+      {menu && menu.items.length > 0 && (
+        <div
+          className="fixed z-50 max-h-64 w-56 overflow-y-auto rounded-xl border border-mint-100 bg-surface p-1 shadow-lg shadow-black/10"
+          style={{ top: menu.top, left: menu.left }}
+          // 防止点击菜单项时 textarea 失焦，保持选区
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          {menu.items.map((it, i) => (
+            <button
+              key={i}
+              onClick={() => acceptMenuItem(it, menu.from)}
+              onMouseEnter={() => setMenu((s) => (s ? { ...s, active: i } : s))}
+              className={[
+                "flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors",
+                i === menu.active
+                  ? "bg-mint-50 text-ink"
+                  : "text-ink-soft hover:bg-mint-50/60",
+              ].join(" ")}
+            >
+              <span className="truncate">{it.label}</span>
+              {it.sub && (
+                <span className="shrink-0 text-[11px] text-ink-soft/50">
+                  /{it.sub}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

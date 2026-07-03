@@ -79,9 +79,22 @@ export interface NoteViewPrefs {
   outline: boolean;
 }
 
+/** 笔记编辑器补全功能开关（可在设置里各自开关） */
+export interface AutocompletePrefs {
+  /** AI 智能续写（幽灵文本），需 DeepSeek API Key */
+  ai: boolean;
+  /** Markdown 符号自动闭合 / 包裹选区 */
+  pairs: boolean;
+  /** 斜杠命令菜单 */
+  slash: boolean;
+  /** 标签 / 历史词补全 */
+  words: boolean;
+}
+
 export interface Settings {
   deepseekApiKey: string;
   deepseekModel: string;
   reportTemplate: string;
   theme: ThemeMode;
+  autocomplete: AutocompletePrefs;
 }
